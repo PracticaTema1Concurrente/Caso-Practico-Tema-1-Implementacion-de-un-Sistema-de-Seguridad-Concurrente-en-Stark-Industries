@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Panel de Sensores — Stark Industries</title>
+    <link rel="stylesheet" href="css/stylesheet.css">
+    <!-- Overrides rápidos para pasar a layout de UNA sola columna (tablas grandes) -->
+    <style>
+        main{grid-template-columns:1fr !important}
+        .table-wrap{overflow:auto;border:1px solid #223;border-radius:10px}
+        .table-wrap.devices{max-height:48vh}
+        .table-wrap.readings{max-height:62vh}
+        .actions-col{white-space:nowrap}
+        .btn-sm{padding:6px 10px;border-radius:8px;border:1px solid #2f4166;background:#0f1527;color:#e6eefc;cursor:pointer}
+        .btn-sm.primary{background:#4ea1ff;color:#08111f;border-color:#3a7fd6;font-weight:600}
+    </style>
+</head>
+<body>
+<header>
+    <h1>Panel de Sensores — Stark Industries</h1>
+    <div class="muted">API: <code>/api/sensors/readings</code> · <code>/api/devices</code></div>
+</header>
+
+<main>
+    <!-- Sección 1: Dispositivos (más grande) -->
+    <section class="card">
+        <h2>Dispositivos</h2>
+        <div class="content">
+            <div class="row">
+                <div>
+                    <label for="d_sensorId">ID del dispositivo</label>
+                    <input id="d_sensorId" placeholder="p. ej. T-1 / H-1 / M-1" />
+                </div>
+                <div>
+                    <label for="d_type">Tipo</label>
+                    <select id="d_type">
+                        <option value="TEMP">TEMP (°C)</option>
+                        <option value="HUM">HUM (%)</option>
+                        <option value="MOTION">MOTION</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div>
+                    <label for="d_period">periodMs (2500–5000)</label>
+                    <input id="d_period" type="number" min="2500" max="5000" step="100" placeholder="4000" />
+                </div>
+                <div>
+                    <label for="auth">Auth básica (opcional)</label>
+                    <input id="auth" placeholder="usuario:clave (si tu API lo pide)" />
+                </div>
+            </div>
+            <div class="actions" style="margin-top:10px">
+                <button id="createDeviceBtn" class="primary">Crear dispositivo</button>
+                <button id="reloadDevicesBtn" class="ghost" type="button">Actualizar lista</button>
+            </div>
+            <p class="muted" style="margin-top:8px">
+                POST → <code>/api/devices</code> · GET → <code>/api/devices</code> · START/STOP → <code>/api/devices/{id}/start|stop</code>
+            </p>
+
+            <div class="table-wrap devices" style="margin-top:10px">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>SensorId</th>
+                        <th>Tipo</th>
+                        <th>Unidad</th>
+                        <th>Activo</th>
+                        <th>periodMs</th>
+                        <th class="actions-col">Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody id="devicesRows">
+                    <tr><td colspan="7" class="muted">Sin dispositivos todavía…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Sección 2: Lecturas (debajo, pantalla completa) -->
+    <section class="card">
+        <h2>Lecturas</h2>
+        <div class="content">
+            <div class="toolbar">
+                <div class="left">
+                    <input id="fSensor" placeholder="Filtrar por sensor (T-1 / H-1 / M-1)" style="width:260px" />
+                    <select id="fType" style="width:160px">
+                        <option value="">Tipo (todos)</option>
+                        <option value="TEMP">TEMP</option>
+                        <option value="HUM">HUM</option>
+                        <option value="MOTION">MOTION</option>
+                    </select>
+                    <button id="filterBtn" class="ghost">Filtrar</button>
+                    <button id="resetBtn" class="ghost">Reset</button>
+                </div>
+                <div class="left">
+                    <button id="refreshBtn" class="ghost">Actualizar</button>
+                    <label style="display:flex;align-items:center;gap:8px">
+                        <input type="checkbox" id="auto" />
+                        <span class="muted">Auto cada 5 s</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="table-wrap readings">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Sensor</th>
+                        <th>Tipo</th>
+                        <th>Valor</th>
+                        <th>Estado</th>
+                        <th>Unidad</th>
+                        <th>Fecha</th>
+                    </tr>
+                    </thead>
+                    <tbody id="rows">
+                    <tr><td colspan="7" class="muted">Sin datos todavía…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            <div class="pagination">
+                <button id="prevPage" class="ghost">« Anterior</button>
+                <span id="pageInfo" class="muted">Página 1/1</span>
+                <button id="nextPage" class="ghost">Siguiente »</button>
+                <select id="pageSize" title="Filas por página" style="width:120px;margin-left:10px">
+                    <option value="10" selected>10 por página</option>
+                    <option value="20">20 por página</option>
+                    <option value="50">50 por página</option>
+                </select>
+            </div>
+
+            <p class="muted" style="margin-top:8px">
+                GET → <code>/api/sensors/readings?size=100</code>
+            </p>
+        </div>
+    </section>
+</main>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="js/main.js"></script>
+</body>
+</html>
