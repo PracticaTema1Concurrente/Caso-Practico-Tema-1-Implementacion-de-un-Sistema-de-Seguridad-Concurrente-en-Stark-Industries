@@ -1,9 +1,21 @@
 services:
-  postgres:
-    image: 'postgres:latest'
+  db:
+    image: postgres:16
+    container_name: myapp-postgres
+    restart: unless-stopped
     environment:
-      - 'POSTGRES_DB=mydatabase'
-      - 'POSTGRES_PASSWORD=secret'
-      - 'POSTGRES_USER=myuser'
+      POSTGRES_DB: starkbbdd
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      TZ: Europe/Madrid
     ports:
-      - '5432'
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myapp -d myapp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  db_data:
