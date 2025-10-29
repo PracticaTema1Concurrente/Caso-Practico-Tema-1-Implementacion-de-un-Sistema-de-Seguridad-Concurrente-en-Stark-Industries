@@ -3,7 +3,7 @@
 Iván Hidalgo
 Gabriel Kaakedjian
 
-NSTRUCCIONES DE ENTREGA:
+INSTRUCCIONES DE ENTREGA:
 
 - El ejercicio debe ser realizado en grupos de 2 y 3 estudiantes. Todos los miembros del grupo deben hacer la entrega con los mismos archivos.
 - Se debe incluir un archivo tipo README donde se especifica el nombre de los miembros del grupo y una explicación breve de la lógica de la solución indicando en una línea qué contiene cada archivo de relevancia (sólo aquellos necesarios para entender la solución).
