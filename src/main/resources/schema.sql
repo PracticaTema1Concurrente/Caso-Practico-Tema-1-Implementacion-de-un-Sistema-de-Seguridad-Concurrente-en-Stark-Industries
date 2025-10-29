@@ -1,6 +1,9 @@
 -- Usuarios
 create table if not exists users (
-    username varchar(50) primary key,
+    id_usuario int primary key auto_increment,
+    nombre_apellidos varchar(100),
+    usuario varchar(50) not null,
+    correo varchar(80) not null,
     password varchar(100) not null,
     enabled boolean not null
     );
