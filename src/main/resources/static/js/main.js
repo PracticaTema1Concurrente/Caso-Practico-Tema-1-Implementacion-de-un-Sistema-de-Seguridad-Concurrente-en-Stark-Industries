@@ -104,7 +104,10 @@ function renderDevices(list) {
       '<tr><td colspan="7" class="muted">Sin dispositivos.</td></tr>';
     return;
   }
-  devicesRows.innerHTML = list
+
+    const sorted = [...list].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+
+  devicesRows.innerHTML = sorted
     .map((d) => {
       // 🪵 LOG 2: cuando se genera la fila y el botón
       console.log(`[LOG 2] Pintando fila -> id=${d.id}, sensorId=${d.sensorId}`);
