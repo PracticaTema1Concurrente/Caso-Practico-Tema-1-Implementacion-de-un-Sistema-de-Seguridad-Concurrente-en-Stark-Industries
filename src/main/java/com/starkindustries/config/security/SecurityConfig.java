@@ -4,12 +4,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+
+import javax.sql.DataSource;
 
 @Configuration
 @EnableMethodSecurity
@@ -20,13 +21,10 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // Usuarios de prueba
+    // 💾 Usuarios desde la base de datos (no en memoria)
     @Bean
-    UserDetailsService users(PasswordEncoder encoder) {
-        return new InMemoryUserDetailsManager(
-                User.withUsername("admin").password(encoder.encode("admin123")).roles("ADMIN").build(),
-                User.withUsername("ops").password(encoder.encode("ops123")).roles("OPS").build()
-        );
+    UserDetailsService users(DataSource dataSource) {
+        return new JdbcUserDetailsManager(dataSource);
     }
 
     @Bean
@@ -39,20 +37,19 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
-                        .loginPage("/login.html")         // muestra este HTML
-                        .loginProcessingUrl("/auth/login")// lo procesa Spring Security
+                        .loginPage("/login.html")
+                        .loginProcessingUrl("/login")
                         .defaultSuccessUrl("/", true)
                         .failureUrl("/login.html?error")
                         .permitAll()
                 )
                 .logout(logout -> logout
-                        .logoutUrl("/auth/logout")
+                        .logoutUrl("/logout")
                         .logoutSuccessUrl("/login.html?logout")
                         .permitAll()
                 )
-                .csrf(csrf -> csrf.disable()); // ⚠️ desactivamos CSRF porque el formulario es estático
+                .csrf(csrf -> csrf.disable()); // solo si tu login.html es estático
 
         return http.build();
     }
-
 }
