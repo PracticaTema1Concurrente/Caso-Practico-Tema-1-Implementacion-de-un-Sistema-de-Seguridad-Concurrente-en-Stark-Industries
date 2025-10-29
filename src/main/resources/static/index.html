@@ -23,6 +23,7 @@
 </header>
 
 <main>
+<main>
     <!-- Sección 1: Dispositivos (más grande) -->
     <section class="card">
         <h2>Dispositivos</h2>
@@ -54,6 +55,8 @@
             <div class="actions" style="margin-top:10px">
                 <button id="createDeviceBtn" class="primary">Crear dispositivo</button>
                 <button id="reloadDevicesBtn" class="ghost" type="button">Actualizar lista</button>
+                <!-- 🆕 -->
+                <button id="deleteAllDevicesBtn" class="ghost" type="button" style="margin-left:6px">Borrar todos</button>
             </div>
             <p class="muted" style="margin-top:8px">
                 POST → <code>/api/devices</code> · GET → <code>/api/devices</code> · START/STOP → <code>/api/devices/{id}/start|stop</code>

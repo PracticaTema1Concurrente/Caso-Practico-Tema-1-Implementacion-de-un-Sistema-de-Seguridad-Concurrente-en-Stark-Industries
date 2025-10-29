@@ -4,6 +4,7 @@ const API = {
   devices: '/api/devices',
   start: (id) => `/api/devices/${id}/start`,
   stop: (id) => `/api/devices/${id}/stop`,
+  del:  (id) => `/api/devices/${id}`, // 🆕 eliminar uno
 };
 
 // --- Helpers DOM/estado ---
@@ -93,9 +94,15 @@ async function loadDevices() {
 function deviceActionButton(d) {
   // 🪵 LOG 3: cuando se crea el botón y se asigna el data-id
   console.log(`[LOG 3] Creando botón para device id=${d.id}`);
-  return d.active
+  const startStopBtn = d.active
     ? `<button class="btn-sm" data-id="${d.id}" data-action="stop">Stop</button>`
     : `<button class="btn-sm primary" data-id="${d.id}" data-action="start">Start</button>`;
+
+  // 🆕 botón eliminar
+  const deleteBtn =
+    `<button class="btn-sm" data-id="${d.id}" data-action="delete" style="margin-left:6px">Eliminar</button>`;
+
+  return `${startStopBtn} ${deleteBtn}`;
 }
 
 function renderDevices(list) {
@@ -105,7 +112,7 @@ function renderDevices(list) {
     return;
   }
 
-    const sorted = [...list].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+  const sorted = [...list].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
 
   devicesRows.innerHTML = sorted
     .map((d) => {
@@ -151,7 +158,8 @@ devicesRows.addEventListener('click', (e) => {
   const id = idFromRow;
 
   if (action === 'start') startDevice(id);
-  else stopDevice(id);
+  else if (action === 'stop') stopDevice(id);
+  else if (action === 'delete') deleteDevice(id); // 🆕
 });
 
 async function createDevice() {
@@ -214,6 +222,58 @@ async function stopDevice(id) {
     return;
   }
   showToast(`Sensor ${id} detenido`);
+  await loadDevices();
+}
+
+// 🆕 Eliminar un dispositivo
+async function deleteDevice(id) {
+  if (!id) return;
+  const sure = confirm(`¿Eliminar el sensor ${id}? Esta acción no se puede deshacer.`);
+  if (!sure) return;
+
+  console.log(`[API] DELETE ${API.del(id)} (deviceId=${id})`);
+  const res = await fetch(API.del(id), {
+    method: 'DELETE',
+    headers: { ...authHeader() },
+  });
+
+  if (res.status === 204 || res.ok) {
+    showToast(`Sensor ${id} eliminado`);
+    // quita localmente y repinta rápido; luego refresco de servidor
+    localDevices = localDevices.filter((d) => String(d.id) !== String(id));
+    renderDevices(localDevices);
+    await loadDevices();
+    return;
+  }
+
+  if (res.status === 404) {
+    showToast('No existe ese sensor (404)');
+  } else {
+    showToast('Error eliminando (' + res.status + ')');
+  }
+}
+
+// 🆕 Eliminar TODOS los dispositivos
+async function deleteAllDevices() {
+  const sure = confirm('¿Eliminar TODOS los sensores? Se detendrán tareas y se borrarán de la BBDD.');
+  if (!sure) return;
+
+  console.log(`[API] DELETE ${API.devices} (all)`);
+  const res = await fetch(API.devices, {
+    method: 'DELETE',
+    headers: { ...authHeader() },
+  });
+
+  if (!res.ok) {
+    showToast('Error al borrar todos (' + res.status + ')');
+    return;
+  }
+
+  // Mensaje del backend tipo: "Se eliminaron X sensores"
+  const text = await res.text();
+  showToast(text || 'Sensores eliminados');
+  localDevices = [];
+  renderDevices(localDevices);
   await loadDevices();
 }
 
@@ -338,6 +398,8 @@ el('d_type').addEventListener('change', () => {
 // --- Dispositivos actions ---
 el('createDeviceBtn').addEventListener('click', createDevice);
 el('reloadDevicesBtn').addEventListener('click', loadDevices);
+// 🆕 botón "Borrar todos"
+el('deleteAllDevicesBtn').addEventListener('click', deleteAllDevices);
 
 // --- Inicialización ---
 (async function init() {

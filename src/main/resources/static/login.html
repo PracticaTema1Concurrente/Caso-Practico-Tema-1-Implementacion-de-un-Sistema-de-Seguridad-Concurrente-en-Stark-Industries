@@ -19,7 +19,7 @@
         <!-- Mensajes dinámicos -->
         <div id="msg" class="msg" role="status" aria-live="polite"></div>
 
-        <form action="/login" method="post" novalidate>
+        <form action="/auth/login" method="post" novalidate>
             <!-- CSRF (si tu backend lo usa) -->
             <input type="hidden" name="_csrf" value="{{csrfToken}}">
 
@@ -63,6 +63,11 @@
             </div>
 
             <button type="submit" class="btn btn--primary">Entrar</button>
+
+            <!-- 🆕 Enlace de registro -->
+            <p class="muted" style="margin-top:10px">
+                ¿No tienes cuenta? <a class="link" href="register.html">Regístrate aquí</a>
+            </p>
         </form>
 
         <footer class="card__footer">
