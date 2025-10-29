@@ -1,0 +1,204 @@
+:root{
+  --bg: #0e1324;
+  --bg-2: #121a32;
+  --txt: #e6eefc;
+  --muted: #9fb2d9;
+  --border: #2f4166;
+  --primary: #4ea1ff;
+  --primary-ink: #08111f;
+  --focus: #83c3ff;
+  --ok: #8fffb3;
+  --error: #ffb3b3;
+  --shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+  background:
+    radial-gradient(1200px 600px at 10% -20%, #1a2547 0%, transparent 60%),
+    radial-gradient(1000px 500px at 110% 20%, #17203c 0%, transparent 60%),
+    var(--bg);
+  color: var(--txt);
+  line-height: 1.4;
+}
+
+.auth{
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.card{
+  width: 100%;
+  max-width: 420px;
+  background: color-mix(in oklab, var(--bg-2) 92%, white 8%);
+  border: 1px solid color-mix(in oklab, var(--border) 70%, black 30%);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 24px;
+  backdrop-filter: blur(6px);
+}
+
+.card__header{
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.logo{
+  height: 36px;
+  width: auto;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
+}
+
+#login-title{
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.subtitle{
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: .95rem;
+}
+
+.field{
+  margin-top: 14px;
+}
+
+label{
+  display: inline-block;
+  font-size: .95rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+input[type="text"],
+input[type="password"]{
+  width: 100%;
+  padding: 12px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #0f1527;
+  color: var(--txt);
+  outline: none;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+input::placeholder { color: #7f90b8; }
+
+input:focus-visible{
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--focus) 35%, transparent);
+}
+
+.password-wrap{
+  position: relative;
+}
+
+.toggle{
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+.toggle:hover{ color: var(--txt); }
+.toggle:focus-visible{
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.row{
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.checkbox{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+  color: var(--muted);
+  font-size: .95rem;
+}
+
+.link{
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+.link:hover{ text-decoration: underline; }
+
+.btn{
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklab, var(--primary) 70%, white 5%);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--primary) 90%, white 10%), var(--primary));
+  color: var(--primary-ink);
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .04s ease, filter .2s ease;
+}
+.btn:hover{ filter: brightness(1.05); }
+.btn:active{ transform: translateY(1px); }
+
+.msg{
+  min-height: 24px;
+  margin: 8px 0 4px;
+  font-size: .95rem;
+  text-align: center;
+  visibility: hidden;
+  display: none;
+}
+.msg--ok{ color: var(--ok); visibility: visible; display: block; }
+.msg--error{ color: var(--error); visibility: visible; display: block; }
+
+.card__footer{
+  margin-top: 18px;
+  text-align: center;
+}
+.muted{ color: var(--muted); font-size: .875rem; }
+
+/* Accesibilidad preferida por teclado */
+:focus-visible{
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Soporte reducido de movimiento */
+@media (prefers-reduced-motion: reduce){
+  *{ transition: none !important; scroll-behavior: auto !important; }
+}
+
+#login-logo {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: 2.2rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #4ea1ff;
+  text-align: center;
+  margin: 0 0 16px;
+  text-shadow: 0 0 12px rgba(78, 161, 255, 0.5);
+}
+#login-logo span {
+  color: #8fffb3;
+}
+
+
