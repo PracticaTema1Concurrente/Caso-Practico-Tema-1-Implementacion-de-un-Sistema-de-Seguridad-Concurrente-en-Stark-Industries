@@ -35,9 +35,9 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(auth -> auth
                         // estáticos y páginas públicas
-                        .requestMatchers("/login.html", "/register.html", "/schema.sql", "/css/**", "/js/**", "/fonts/**").permitAll()
+                        .requestMatchers("/login.html", "/register.html",  "/css/**", "/js/**", "/fonts/**").permitAll()
                         // permitir el POST del registro
-                        .requestMatchers("/auth/register").permitAll()
+                        .requestMatchers("/auth/register", "/auth/login").permitAll()
                         // lecturas públicas (si lo deseas)
                         .requestMatchers("/api/sensors/readings/**").permitAll()
                         // resto de la API requiere auth
