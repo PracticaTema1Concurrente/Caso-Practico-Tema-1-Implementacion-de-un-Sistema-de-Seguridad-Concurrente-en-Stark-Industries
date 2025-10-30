@@ -1,0 +1,107 @@
+@startuml
+skinparam packageStyle rect
+skinparam class {
+  BackgroundColor White
+  ArrowColor #555
+  BorderColor #333
+}
+skinparam stereotype {
+  CBackgroundColor #EEE8
+  CBorderColor #999
+}
+
+' ===== Paquetes =====
+package "com.starkindustries.config.security" {
+  class CsrfCookieFilter <<Filter>> {
+    +doFilterInternal(request, response, chain)
+  }
+
+  class SecurityConfig <<Configuration>> {
+    .. beans/tareas típicas (implícito) ..
+    ' UserDetailsService, AuthenticationManager, SecurityFilterChain, etc.
+  }
+}
+
+package "com.starkindustries.config" {
+  class AsyncConfig <<Configuration>> {
+    +sensorExecutor() : Executor
+  }
+
+  class ScheduleConfig <<Configuration>> {
+    +sensorScheduler() : ThreadPoolTaskScheduler
+  }
+
+  class BootstrapAdmin <<Configuration>> {
+    +initAdmin(UserRepo, PasswordEncoder) : CommandLineRunner
+  }
+}
+
+' ===== Externos / placeholders para relaciones =====
+interface OncePerRequestFilter <<external>>
+interface CsrfFilter <<external>>
+class CookieCsrfTokenRepository <<external>>
+class ThreadPoolTaskExecutor <<external>>
+class ThreadPoolTaskScheduler <<external>>
+interface Executor <<external>>
+interface CommandLineRunner <<external>>
+class PasswordEncoder <<external>>
+class User <<external>>
+interface UserRepo <<external>>
+
+' ===== Herencias / Implementaciones internas =====
+CsrfCookieFilter -up-|> OncePerRequestFilter
+
+' ===== Dependencias (uso) =====
+' SecurityConfig configura la cadena de filtros, CSRF y usa nuestro filtro
+SecurityConfig ..> CsrfCookieFilter : addFilterAfter(..., CsrfFilter)
+SecurityConfig ..> CsrfFilter
+SecurityConfig ..> CookieCsrfTokenRepository : csrfTokenRepository(...)
+SecurityConfig ..> UserRepo
+SecurityConfig ..> User
+
+' Bootstrap de admin por CLI
+BootstrapAdmin ..> CommandLineRunner
+BootstrapAdmin ..> UserRepo
+BootstrapAdmin ..> PasswordEncoder
+BootstrapAdmin ..> User
+
+' AsyncConfig expone un Executor basado en ThreadPoolTaskExecutor
+AsyncConfig ..> Executor
+AsyncConfig ..> ThreadPoolTaskExecutor : crea/retorna
+
+' ScheduleConfig expone un scheduler basado en ThreadPoolTaskScheduler
+ScheduleConfig ..> ThreadPoolTaskScheduler : crea/retorna
+
+' ===== Estereotipos/Notas =====
+note right of CsrfCookieFilter
+Extiende OncePerRequestFilter
+y pone el token CSRF en cookie
+end note
+
+note right of SecurityConfig
+@Configuration / @EnableMethodSecurity
+Define SecurityFilterChain:
+- reglas HTTP
+- CSRF con cookie (no HttpOnly)
+- ignora rutas: /auth/register, /api/devices/**,
+  /api/alerts/**, /auth/all, /auth/login, /auth/{id}
+- añade CsrfCookieFilter tras CsrfFilter
+end note
+
+note bottom of AsyncConfig
+@EnableAsync
+@Bean "sensorExecutor"
+Core: 4, Max: 8, Queue: 200,
+prefijo "sensor-"
+end note
+
+note bottom of ScheduleConfig
+@Bean "sensorScheduler"
+Pool: 8, prefijo "sched-"
+end note
+
+note bottom of BootstrapAdmin
+Al iniciar, si no hay admin:
+crea usuario "admin" (roles=ADMIN)
+end note
+@enduml

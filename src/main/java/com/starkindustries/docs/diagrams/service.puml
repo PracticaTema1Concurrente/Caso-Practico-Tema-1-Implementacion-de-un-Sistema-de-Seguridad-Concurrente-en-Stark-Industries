@@ -1,0 +1,101 @@
+@startuml
+title Servicios y dependencias — Stark Industries
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+package "com.starkindustries.service" {
+  class AlertReviewService {
+    + saveDangerOnly(in: AlertReview): AlertReview
+    + findRecent(limit: int): List<AlertReview>
+  }
+
+  class SensorCoordinatorService {
+    - simulators: Map<String, SensorSimulator>
+    - ingestService: SensorIngestService
+    + allSimulators(): Collection<SensorSimulator>
+    + pollAllOnceAsync(): void
+  }
+
+  class SensorFleetService {
+    - deviceRepo: SensorDeviceRepo
+    - scheduler: ThreadPoolTaskScheduler
+    - generators: Map<String, SensorValueGenerator>
+    - running: Map<Long, ScheduledFuture<?>>
+    + start(deviceId: Long): void
+    + stop(deviceId: Long): void
+    + startAllInactive(): void
+    + stopAll(): void
+  }
+
+  class SensorIngestService {
+    - repo: SensorReadingRepo
+    + ingestAsync(reading: SensorReading): void
+    - shouldPersist(reading: SensorReading): boolean
+  }
+
+  class UserService {
+    - userRepo: UserRepo
+    - passwordEncoder: PasswordEncoder
+    + ensureAdminExists(): void
+    + listUsers(): List<User>
+    + updateRoles(userId: Long, rolesCsv: String): User
+  }
+}
+
+package "com.starkindustries.domain" {
+  class AlertReview
+  class SensorReading
+  class SensorDevice
+  class User
+}
+
+package "com.starkindustries.domain.repository" {
+  interface AlertReviewRepo
+  interface SensorReadingRepo
+  interface SensorDeviceRepo
+  interface UserRepo
+}
+
+package "com.starkindustries.sensors" {
+  interface SensorSimulator {
+    + nextReading(): SensorReading
+  }
+  interface SensorValueGenerator
+}
+
+' Infra utils (de Spring)
+class ThreadPoolTaskScheduler
+class ScheduledFuture~T~
+interface PasswordEncoder
+
+' --------------------
+' Relaciones (inyecciones y usos)
+' --------------------
+AlertReviewService --> AlertReviewRepo : usa
+AlertReviewService ..> AlertReview
+AlertReviewService ..> List
+
+SensorCoordinatorService --> SensorIngestService : inyectado
+SensorCoordinatorService --> "Map<String, SensorSimulator>" : inyectado
+SensorCoordinatorService ..> SensorSimulator
+SensorCoordinatorService ..> SensorReading
+
+SensorFleetService --> SensorDeviceRepo : inyectado
+SensorFleetService ..> ThreadPoolTaskScheduler
+SensorFleetService ..> "Map<String, SensorValueGenerator>"
+SensorFleetService ..> ScheduledFuture
+SensorFleetService ..> SensorDevice
+SensorFleetService ..> SensorReading
+
+SensorIngestService --> SensorReadingRepo : inyectado
+SensorIngestService ..> SensorReading
+SensorIngestService ..> Logger
+
+UserService --> UserRepo : inyectado
+UserService ..> PasswordEncoder
+UserService ..> User
+UserService ..> List
+
+@enduml

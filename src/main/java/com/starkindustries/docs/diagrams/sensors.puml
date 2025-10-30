@@ -1,0 +1,68 @@
+@startuml
+title Stark Industries – Sensores y Generadores (diagrama de clases)
+
+skinparam classAttributeIconSize 0
+skinparam stereotypeCBackgroundColor #e3f2fd
+skinparam stereotypeFontColor #0d47a1
+skinparam packageStyle rectangle
+
+package "com.starkindustries.sensors" {
+  interface SensorSimulator {
+    +String type()
+    +com.starkindustries.domain.SensorReading nextReading()
+  }
+
+  interface SensorValueGenerator {
+    +boolean supports(String type)
+    +com.starkindustries.domain.SensorReading generate(com.starkindustries.domain.SensorDevice d)
+  }
+
+  class TempSensor <<Component>> {
+  }
+  class HumiditySensor <<Component>> {
+  }
+  class MotionSensor <<Component>> {
+  }
+
+  class TempGenerator <<Component>> {
+  }
+  class HumidityGenerator <<Component>> {
+  }
+  class MotionGenerator <<Component>> {
+  }
+
+  SensorSimulator <|.. TempSensor
+  SensorSimulator <|.. HumiditySensor
+  SensorSimulator <|.. MotionSensor
+
+  SensorValueGenerator <|.. TempGenerator
+  SensorValueGenerator <|.. HumidityGenerator
+  SensorValueGenerator <|.. MotionGenerator
+}
+
+package "com.starkindustries.domain" {
+  class SensorDevice
+  abstract class SensorReading
+  class TempReading
+  class HumidityReading
+  class MotionReading
+
+  SensorReading <|-- TempReading
+  SensorReading <|-- HumidityReading
+  SensorReading <|-- MotionReading
+}
+
+' Dependencias por tipos de retorno/parámetros
+TempSensor ..> TempReading : crea
+HumiditySensor ..> HumidityReading : crea
+MotionSensor ..> MotionReading : crea
+
+TempGenerator ..> SensorDevice : usa
+HumidityGenerator ..> SensorDevice : usa
+MotionGenerator ..> SensorDevice : usa
+
+TempGenerator ..> TempReading : retorna
+HumidityGenerator ..> HumidityReading : retorna
+MotionGenerator ..> MotionReading : retorna
+
+@enduml

@@ -1,0 +1,177 @@
+@startuml
+title Stark Industries — Modelo de dominio y repositorios
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam roundcorner 15
+skinparam class {
+  BackgroundColor White
+  BorderColor Black
+}
+
+package "com.starkindustries.domain" {
+  abstract class SensorReading {
+    - Long id
+    - String sensorId
+    - double value
+    - String unit
+    - OffsetDateTime createdAt
+    --
+    + Long getId()
+    + String getSensorId()
+    + void setSensorId(String)
+    + double getValue()
+    + void setValue(double)
+    + String getUnit()
+    + void setUnit(String)
+    + OffsetDateTime getCreatedAt()
+    + void setCreatedAt(OffsetDateTime)
+    + SensorDevice getDevice()
+    + void setDevice(SensorDevice)
+  }
+
+  class TempReading {
+    + TempReading()
+  }
+  class HumidityReading {
+    + HumidityReading()
+  }
+  class MotionReading {
+    + MotionReading()
+  }
+
+  class SensorDevice {
+    - Long id
+    - String sensorId
+    - SensorType type
+    - String unit
+    - boolean active
+    - long periodMs
+    --
+    + Long getId()
+    + String getSensorId()
+    + void setSensorId(String)
+    + SensorType getType()
+    + void setType(SensorType)
+    + String getUnit()
+    + void setUnit(String)
+    + boolean isActive()
+    + void setActive(boolean)
+    + long getPeriodMs()
+    + void setPeriodMs(long)
+  }
+
+  enum SensorType {
+    TEMP
+    HUM
+    MOTION
+  }
+
+  class AlertReview {
+    - Long id
+    - String sensorId
+    - String type
+    - Double value
+    - String unit
+    - String notes
+    - String decidedBy
+    - String decision
+    - Instant createdAt
+    --
+    + Long getId()
+    + String getSensorId()
+    + String getType()
+    + void setType(String)
+    + Double getValue()
+    + void setValue(Double)
+    + String getUnit()
+    + void setUnit(String)
+    + String getNotes()
+    + void setNotes(String)
+    + String getDecidedBy()
+    + void setDecidedBy(String)
+    + String getDecision()
+    + void setDecision(String)
+    + Instant getCreatedAt()
+  }
+
+  class User {
+    - Long id
+    - String fullName
+    - String username
+    - String email
+    - String passwordHash
+    - String roles
+    - Instant createdAt
+    --
+    + Long getId()
+    + String getFullName()
+    + void setFullName(String)
+    + String getUsername()
+    + void setUsername(String)
+    + String getEmail()
+    + void setEmail(String)
+    + String getPasswordHash()
+    + void setPasswordHash(String)
+    + String getRoles()
+    + void setRoles(String)
+    + Instant getCreatedAt()
+    + void setCreatedAt(Instant)
+  }
+}
+
+package "com.starkindustries.domain.repository" {
+  interface AlertReviewRepo <<repository>> {
+    ..JpaRepository<AlertReview, Long>..
+  }
+  interface SensorReadingRepo <<repository>> {
+    ..JpaRepository<SensorReading, Long>..
+    + List<SensorReading> findBySensorId(String)
+    + Page<SensorReading> findAllWithDevice(Pageable)
+    + List<SensorReading> findByDeviceIdWithDevice(Long, Pageable)
+    + List<SensorReading> findByCreatedAtAfterWithDevice(OffsetDateTime, Pageable)
+  }
+  interface TempReadingRepo <<repository>> {
+    ..JpaRepository<TempReading, Long>..
+  }
+  interface HumidityReadingRepo <<repository>> {
+    ..JpaRepository<HumidityReading, Long>..
+  }
+  interface MotionReadingRepo <<repository>> {
+    ..JpaRepository<MotionReading, Long>..
+  }
+  interface SensorDeviceRepo <<repository>> {
+    ..JpaRepository<SensorDevice, Long>..
+    + Optional<SensorDevice> findBySensorId(String)
+    + List<SensorDevice> findByType(SensorType)
+    + List<SensorDevice> findByActive(boolean)
+  }
+  interface UserRepo <<repository>> {
+    ..JpaRepository<User, Long>..
+    + Optional<User> findByEmail(String)
+    + Optional<User> findByUsername(String)
+    + boolean existsByEmail(String)
+    + boolean existsByUsername(String)
+  }
+}
+
+' === Herencia de las lecturas ===
+SensorReading <|-- TempReading
+SensorReading <|-- HumidityReading
+SensorReading <|-- MotionReading
+
+' === Relaciones ===
+SensorReading "many" o-- "1" SensorDevice : device
+SensorDevice --> SensorType : type
+
+' === Repositorios -> Entidades (dependencias) ===
+AlertReviewRepo ..> AlertReview
+SensorReadingRepo ..> SensorReading
+TempReadingRepo ..> TempReading
+HumidityReadingRepo ..> HumidityReading
+MotionReadingRepo ..> MotionReading
+SensorDeviceRepo ..> SensorDevice
+UserRepo ..> User
+
+@enduml

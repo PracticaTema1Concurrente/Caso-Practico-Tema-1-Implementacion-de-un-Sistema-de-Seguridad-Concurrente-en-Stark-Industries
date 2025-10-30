@@ -1,0 +1,141 @@
+@startuml
+' ============================================================
+' Diagrama de estructura (controladores, servicios, repos, entidades)
+' Basado en: AlertReviewController, AuthController,
+'            SensorAdminController, SensorController, SensorReadingsController
+' ============================================================
+
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam packageStyle rect
+skinparam ArrowColor #999999
+skinparam Class {
+  BackgroundColor White
+  BorderColor #333333
+}
+hide circle
+hide methods
+hide stereotypes
+
+' -------------------- Paquetes --------------------
+package "com.starkindustries.web" as web {
+  class AuthController <<RestController>> {
+    + /auth (base)
+    --
+    + create(User) : ResponseEntity
+    + list() : List<User>
+    + getUser(id) : User
+    + getByEmail(email) : User
+    + registerJson(...)
+    + loginJson(...)
+  }
+
+  class AlertReviewController <<RestController>> {
+    + /api/alerts (base)
+    --
+    + submitReview(...): ResponseEntity
+    + myReviews(auth): List<AlertReview>
+    + latest(limit): ResponseEntity<List<AlertReview>>
+  }
+
+  class SensorAdminController <<RestController>> {
+    + /api/devices (base)
+    --
+    + create(SensorDevice) : SensorDevice
+    + list() : List<SensorDevice>
+    + byType(type: SensorType) : List<SensorDevice>
+    + start(id) : ResponseEntity
+    + stop(id) : ResponseEntity
+    + startAll() : ResponseEntity
+    + stopAll() : ResponseEntity
+  }
+
+  class SensorController <<RestController>> {
+    + /api/sensors/ops (base)
+    --
+    + insertTemp(...)
+    + insertHumidity(...)
+    + insertMotion(...)
+    + startBatch(...)
+    + stopBatch(...)
+  }
+
+  class SensorReadingsController <<RestController>> {
+    + /api/sensors (base)
+    --
+    + listAll(filters…) : List<SensorReading>
+    + listTemp(filters…) : List<TempReading>
+    + listHumidity(filters…) : List<HumidityReading>
+    + listMotion(filters…) : List<MotionReading>
+  }
+}
+
+package "com.starkindustries.service" as svc {
+  class UserService <<Service>>
+  class AlertReviewService <<Service>>
+  class SensorFleetService <<Service>>
+  class SensorCoordinatorService <<Service>>
+}
+
+package "com.starkindustries.domain.repository" as repo {
+  interface UserRepo <<Repository>>
+  interface SensorDeviceRepo <<Repository>>
+  interface SensorReadingRepo <<Repository>>
+  interface TempReadingRepo <<Repository>>
+  interface HumidityReadingRepo <<Repository>>
+  interface MotionReadingRepo <<Repository>>
+}
+
+package "com.starkindustries.domain" as dom {
+  class User <<Entity>>
+  class AlertReview <<Entity>>
+  class SensorDevice <<Entity>>
+  abstract class SensorReading <<Entity>>
+  class TempReading <<Entity>>
+  class HumidityReading <<Entity>>
+  class MotionReading <<Entity>>
+  enum SensorType
+}
+
+package "org.springframework.security" as sec {
+  class AuthenticationManager
+  class SecurityContextRepository
+}
+
+' -------------------- Relaciones (inyecciones y uso) --------------------
+' AuthController
+web.AuthController ..> svc.UserService : usa
+web.AuthController ..> repo.UserRepo : usa
+web.AuthController ..> sec.AuthenticationManager : autentica
+web.AuthController ..> sec.SecurityContextRepository : contexto
+
+' AlertReviewController
+web.AlertReviewController ..> svc.AlertReviewService : usa
+web.AlertReviewController ..> dom.AlertReview : devuelve
+
+' SensorAdminController
+web.SensorAdminController ..> svc.SensorFleetService : orquesta
+web.SensorAdminController ..> repo.SensorDeviceRepo : consulta
+web.SensorAdminController ..> dom.SensorDevice : crea/lista
+web.SensorAdminController ..> dom.SensorType : filtra
+
+' SensorController (operaciones)
+web.SensorController ..> repo.TempReadingRepo : inserta
+web.SensorController ..> repo.HumidityReadingRepo : inserta
+web.SensorController ..> repo.MotionReadingRepo : inserta
+web.SensorController ..> svc.SensorCoordinatorService : coordina
+
+' SensorReadingsController (consultas)
+web.SensorReadingsController ..> repo.SensorReadingRepo : lista
+web.SensorReadingsController ..> repo.TempReadingRepo : lista
+web.SensorReadingsController ..> repo.HumidityReadingRepo : lista
+web.SensorReadingsController ..> repo.MotionReadingRepo : lista
+
+' -------------------- Modelo de dominio --------------------
+dom.TempReading -|> dom.SensorReading
+dom.HumidityReading -|> dom.SensorReading
+dom.MotionReading -|> dom.SensorReading
+dom.SensorReading --> "1" dom.SensorDevice : pertenece a
+dom.SensorDevice --> dom.SensorType : tipo
+
+@enduml
