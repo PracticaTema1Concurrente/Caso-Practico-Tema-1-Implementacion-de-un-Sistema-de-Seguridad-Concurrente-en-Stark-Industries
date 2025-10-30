@@ -21,6 +21,10 @@ let pageSize = 10;
 let localDevices = [];
 let isAdmin = false;
 
+// 🆕 Detección de nuevas lecturas (alert bloqueante con confirmación)
+let lastSeenReadingId = null;
+let firstReadingsInit = true;
+
 // --- UI helpers ---
 function showToast(msg) {
   toast.textContent = msg;
@@ -119,15 +123,12 @@ async function loadDevices() {
     return;
   }
   const data = await res.json();
-  console.log('[LOG 1] Devices desde API:', data);
-
   localDevices = Array.isArray(data) ? data : [];
   renderDevices(localDevices);
   if (el('d_type')) el('d_sensorId').value = nextSensorIdForType(el('d_type').value);
 }
 
 function deviceActionButton(d) {
-  console.log(`[LOG 3] Creando botón para device id=${d.id}`);
   const disabledAttr = isAdmin ? '' : 'disabled title="Requiere rol ADMIN"';
   const startStopBtn = d.active
     ? `<button class="btn-sm" ${disabledAttr} data-id="${d.id}" data-action="stop">Stop</button>`
@@ -142,9 +143,7 @@ function renderDevices(list) {
     return;
   }
   const sorted = [...list].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
-  devicesRows.innerHTML = sorted.map((d) => {
-    console.log(`[LOG 2] Pintando fila -> id=${d.id}, sensorId=${d.sensorId}`);
-    return `
+  devicesRows.innerHTML = sorted.map((d) => `
       <tr data-device-id="${d.id ?? ''}">
         <td>${d.id ?? ''}</td>
         <td>${d.sensorId}</td>
@@ -153,8 +152,7 @@ function renderDevices(list) {
         <td>${d.active ? 'Sí' : 'No'}</td>
         <td>${d.periodMs ?? ''}</td>
         <td class="actions-col">${deviceActionButton(d)}</td>
-      </tr>`;
-  }).join('');
+      </tr>`).join('');
 }
 
 // Delegación de eventos
@@ -201,7 +199,6 @@ async function createDevice() {
 
 async function startDevice(id) {
   if (!isAdmin) { showToast('🔒 No tienes permiso (ADMIN)'); return; }
-  console.log(`[API] POST ${API.start(id)} (deviceId=${id})`);
   const res = await fetch(API.start(id), { ...commonPostOpts({ ...authHeader() }) });
   if (!res.ok) { showToast('No se pudo iniciar (' + res.status + ')'); return; }
   showToast(`Sensor ${id} iniciado`);
@@ -210,7 +207,6 @@ async function startDevice(id) {
 
 async function stopDevice(id) {
   if (!isAdmin) { showToast('🔒 No tienes permiso (ADMIN)'); return; }
-  console.log(`[API] POST ${API.stop(id)} (deviceId=${id})`);
   const res = await fetch(API.stop(id), { ...commonPostOpts({ ...authHeader() }) });
   if (!res.ok) { showToast('No se pudo detener (' + res.status + ')'); return; }
   showToast(`Sensor ${id} detenido`);
@@ -222,7 +218,6 @@ async function deleteDevice(id) {
   if (!id) return;
   if (!confirm(`¿Eliminar el sensor ${id}? Esta acción no se puede deshacer.`)) return;
 
-  console.log(`[API] DELETE ${API.del(id)} (deviceId=${id})`);
   const res = await fetch(API.del(id), {
     method: 'DELETE',
     credentials: 'same-origin',
@@ -245,7 +240,6 @@ async function deleteAllDevices() {
   if (!isAdmin) { showToast('🔒 No tienes permiso (ADMIN)'); return; }
   if (!confirm('¿Eliminar TODOS los sensores? Se detendrán tareas y se borrarán de la BBDD.')) return;
 
-  console.log(`[API] DELETE ${API.devices} (all)`);
   const res = await fetch(API.devices, {
     method: 'DELETE',
     credentials: 'same-origin',
@@ -266,8 +260,43 @@ async function loadReadings() {
     headers: { Accept: 'application/json', ...authHeader() },
   });
   if (!res.ok) { showToast('Error cargando lecturas (' + res.status + ')'); return; }
+
   const data = await res.json();
-  allReadings = Array.isArray(data) ? data : [];
+
+  // 🆕 Detectar nuevas lecturas y preguntar Revisar/ Ignorar
+  const raw = Array.isArray(data) ? data : [];
+  const currentMaxId = raw.reduce((max, r) => {
+    const idNum = Number(r?.id ?? 0);
+    return Number.isFinite(idNum) && idNum > max ? idNum : max;
+  }, 0);
+
+  if (firstReadingsInit) {
+    lastSeenReadingId = currentMaxId;
+    firstReadingsInit = false;
+  } else {
+    const newOnes = raw.filter(r => Number(r?.id ?? 0) > (lastSeenReadingId ?? 0));
+    if (newOnes.length > 0) {
+      const first = newOnes[0] || {};
+      const device = first.device || {};
+      const sensorId = first.sensorId || device.sensorId || '?';
+      const type = (device.type || first.type || '').toUpperCase();
+      const val = first.value;
+
+      const msg = `🔔 ${newOnes.length} lectura(s) nueva(s)\n\nPrimera:\n• Sensor: ${sensorId}\n• Tipo: ${type}\n• Valor: ${val}\n\n¿Deseas revisarla ahora?`;
+      const revisar = confirm(msg);
+      if (revisar) {
+        const q = new URLSearchParams({
+          type,
+          value: String(val ?? ''),
+          sensorId: String(sensorId ?? '')
+        }).toString();
+        window.location.href = `revision.html?${q}`;
+      }
+      lastSeenReadingId = currentMaxId;
+    }
+  }
+
+  allReadings = raw;
   applyFilters();
 }
 

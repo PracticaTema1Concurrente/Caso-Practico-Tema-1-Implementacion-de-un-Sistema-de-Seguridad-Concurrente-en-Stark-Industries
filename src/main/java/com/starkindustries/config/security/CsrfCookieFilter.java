@@ -10,11 +10,15 @@ import java.io.IOException;
 
 public class CsrfCookieFilter extends OncePerRequestFilter {
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        // Tocar el atributo obliga a generar/cargar el token y que el repo lo ponga en cookie
-        CsrfToken csrf = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
-        // (No hace falta hacer nada con 'csrf', solo accederlo)
-        filterChain.doFilter(request, response);
+
+        // Fuerza la materialización del token para que el repo lo escriba en cookie
+        CsrfToken token = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+        if (token == null) {
+            token = (CsrfToken) request.getAttribute("_csrf"); // <- algunos handlers usan este nombre
+        }
+        // No hace falta nada más; con "tocarlo" basta
+        chain.doFilter(request, response);
     }
 }

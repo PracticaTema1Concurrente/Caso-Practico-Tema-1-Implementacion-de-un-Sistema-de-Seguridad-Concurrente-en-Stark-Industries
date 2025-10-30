@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>Revisión de Lectura — Stark Industries</title>
+    <link rel="stylesheet" href="css/main.css">
+    <style>
+        /* Estilos mínimos para la infografía */
+        .wrap { max-width: 900px; margin: 30px auto; padding: 16px; }
+        .card { background:#0f1527; color:#e6eefc; border:1px solid #223; border-radius:12px; padding:18px; }
+        .row { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+        .metric { display:flex; gap:12px; align-items:center; margin:8px 0; }
+        .label { color:#9fb3d2; width:140px; }
+        .value { font-weight:600; }
+        .bar {
+          position:relative; height:26px; border-radius:14px; background:linear-gradient(90deg,#1e3a8a 0,#16a34a 45%,#f59e0b 60%,#b91c1c 80%);
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+        }
+        .tick {
+          position:absolute; top:-8px; width:2px; height:42px; background:#e6eefc22;
+        }
+        .cursor {
+          position:absolute; top:-8px; width:0; height:0; border-left:8px solid transparent; border-right:8px solid transparent;
+          border-bottom:14px solid #fff; filter: drop-shadow(0 2px 2px rgba(0,0,0,.35));
+        }
+        .legend { display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; font-size:14px; color:#cdd8ea }
+        .pill { padding:2px 8px; border-radius:999px; border:1px solid #2f4166; }
+        .ok { background:#123b26; border-color:#0b6b3a; color:#9ff2c4 }
+        .warn { background:#3f3212; border-color:#a76f04; color:#ffdca8 }
+        .crit { background:#3a1212; border-color:#7a1e1e; color:#ffb7b7 }
+
+        .actions { display:flex; gap:10px; margin-top:16px }
+        .btn { padding:10px 14px; border-radius:10px; border:1px solid #2f4166; background:#0f1527; color:#e6eefc; cursor:pointer }
+        .btn.primary { background:#4ea1ff; color:#08111f; border-color:#3a7fd6; font-weight:700 }
+        .muted { color:#9fb3d2 }
+        .sep { height:1px; background:#223; margin:14px 0 }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <section class="card">
+        <h1>Revisión de Lectura</h1>
+        <p class="muted" id="meta"></p>
+        <div class="meta-badges" id="meta-badges"></div>
+
+        <div class="sep"></div>
+
+        <!-- Sección TEMP -->
+        <div id="sec-temp" style="display:none">
+            <h2>Temperatura (°C)</h2>
+            <div class="metric"><span class="label">Valor actual</span> <span class="value" id="v-temp">–</span></div>
+            <div class="metric"><span class="label">Rango</span> <span class="muted">-10 °C a 100 °C</span></div>
+            <div class="bar" id="bar-temp"></div>
+            <div class="legend">
+                <span class="pill ok">Seguro: ≤ 39.9 °C</span>
+                <span class="pill warn">Precaución: 40–59.9 °C</span>
+                <span class="pill crit">Peligroso: ≥ 60 °C</span>
+            </div>
+        </div>
+
+        <!-- Sección HUM -->
+        <div id="sec-hum" style="display:none">
+            <h2>Humedad relativa (%)</h2>
+            <div class="metric"><span class="label">Valor actual</span> <span class="value" id="v-hum">–</span></div>
+            <div class="metric"><span class="label">Rango</span> <span class="muted">0 % a 100 %</span></div>
+            <div class="bar" id="bar-hum"></div>
+            <div class="legend">
+                <span class="pill ok">Seguro: ≤ 59.9 %</span>
+                <span class="pill warn">Precaución: 60–79.9 %</span>
+                <span class="pill crit">Peligroso: ≥ 80 %</span>
+            </div>
+        </div>
+
+        <!-- Sección MOTION -->
+        <div id="sec-motion" style="display:none">
+            <h2>Movimiento (boolean)</h2>
+            <div class="metric"><span class="label">Valor actual</span> <span class="value" id="v-motion">–</span></div>
+            <div class="metric"><span class="label">Rango</span> <span class="muted">0 = sin movimiento · 1 = movimiento</span></div>
+            <div class="bar" id="bar-motion"></div>
+            <div class="legend">
+                <span class="pill ok">Seguro: 0</span>
+                <span class="pill crit">Peligroso: 1</span>
+            </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="actions">
+            <button class="btn" onclick="window.location.href='index.html'">Volver al panel</button>
+            <button class="btn" id="dec-safe">Marcar como Seguro</button>
+            <button class="btn primary" id="dec-danger">Marcar como Peligroso</button>
+        </div>
+    </section>
+</div>
+
+<script>
+    // Leer parámetros
+    const params = new URLSearchParams(window.location.search);
+    const type = (params.get('type') || '').toUpperCase();       // TEMP | HUM | MOTION
+    const sensorId = params.get('sensorId') || '¿?';
+    const valueRaw = params.get('value');
+    const value = valueRaw !== null ? Number(valueRaw) : null;
+
+    // Meta info
+    document.getElementById('meta').textContent =
+      `Sensor: ${sensorId} · Tipo: ${type || '—'} · Valor recibido: ${valueRaw ?? '—'}`;
+
+    // Helpers para pintar barra
+    function placeCursor(bar, fraction) {
+      // fraction [0,1] → % dentro de la barra
+      const x = Math.max(0, Math.min(1, fraction)) * bar.clientWidth;
+      const cur = document.createElement('div');
+      cur.className = 'cursor';
+      cur.style.left = `${x - 8}px`; // centrado
+      bar.appendChild(cur);
+    }
+    function addTicks(bar, count = 5) {
+      for (let i = 0; i <= count; i++) {
+        const t = document.createElement('div');
+        t.className = 'tick';
+        t.style.left = `${(i / count) * 100}%`;
+        bar.appendChild(t);
+      }
+    }
+
+    // Mostrar solo la sección correspondiente y pintar valor
+    function renderTemp() {
+      const sec = document.getElementById('sec-temp');
+      sec.style.display = 'block';
+      document.getElementById('v-temp').textContent = (value ?? '—') + ' °C';
+      const bar = document.getElementById('bar-temp');
+      addTicks(bar, 6); // -10..100 aprox
+      // Mapeo -10..100 a 0..1
+      const min = -10, max = 100;
+      const frac = value == null ? 0 : (value - min) / (max - min);
+      placeCursor(bar, frac);
+    }
+
+    function renderHum() {
+      const sec = document.getElementById('sec-hum');
+      sec.style.display = 'block';
+      document.getElementById('v-hum').textContent = (value ?? '—') + ' %';
+      const bar = document.getElementById('bar-hum');
+      addTicks(bar, 5); // 0..100
+      const min = 0, max = 100;
+      const frac = value == null ? 0 : (value - min) / (max - min);
+      placeCursor(bar, frac);
+    }
+
+    function renderMotion() {
+      const sec = document.getElementById('sec-motion');
+      sec.style.display = 'block';
+      const val = (value ?? 0) ? 1 : 0;
+      document.getElementById('v-motion').textContent = String(val);
+      const bar = document.getElementById('bar-motion');
+      addTicks(bar, 1); // 0..1
+      placeCursor(bar, val); // 0 o 1
+    }
+
+    // Decisión botones (por ahora solo log/alert; sin persistencia)
+    function handleDecision(decision) {
+      // Aquí podrías POSTear a /api/review si luego quieres persistir
+      console.log('Decision tomada:', { sensorId, type, value, decision });
+      alert(`Has marcado la lectura como: ${decision.toUpperCase()}`);
+      // Opcional: volver al panel tras decidir
+      // window.location.href = 'index.html';
+    }
+
+    document.getElementById('dec-safe').addEventListener('click', () => handleDecision('seguro'));
+    document.getElementById('dec-danger').addEventListener('click', () => handleDecision('peligroso'));
+
+    // Router simple por tipo
+    switch (type) {
+      case 'TEMP': renderTemp(); break;
+      case 'HUM': renderHum(); break;
+      case 'MOTION': renderMotion(); break;
+      default:
+        alert('Tipo de sensor no reconocido. Volviendo al panel.');
+        window.location.href = 'index.html';
+    }
+
+  const metaB = document.getElementById('meta-badges');
+    metaB.innerHTML = `
+      <span class="badge">ID: <strong>${sensorId}</strong></span>
+      <span class="badge">Tipo: <strong>${type}</strong></span>
+      <span class="badge">Valor: <strong>${valueRaw ?? '—'}</strong></span>`;
+</script>
+</body>
+</html>

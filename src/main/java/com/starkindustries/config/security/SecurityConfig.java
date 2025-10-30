@@ -85,7 +85,7 @@ public class SecurityConfig {
     public SecurityFilterChain security(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        // público:
+                        // pÃºblico:
                         .requestMatchers("/login.html", "/register.html", "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
                         .requestMatchers(HttpMethod.GET, "/auth/all", "/auth/{id}", "/auth/me", "/auth/login").permitAll()
@@ -111,7 +111,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .ignoringRequestMatchers(
-                                "/auth/register","/api/**", "/auth/all", "/auth/login", "/auth/{id}"
+                                "/auth/register","/api/devices/**", "/auth/all", "/auth/login", "/auth/{id}"
                         )
                 ).addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class);
 
