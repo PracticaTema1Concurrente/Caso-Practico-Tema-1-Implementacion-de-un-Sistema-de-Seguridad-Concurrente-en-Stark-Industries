@@ -21,13 +21,13 @@
 
         <form id="registerForm" action="/auth/register" method="post" novalidate>
             <!-- CSRF (si tu backend lo usa) -->
-            <input type="hidden" name="_csrf" value="{{csrfToken}}">
+            <input type="hidden" name="_csrf" id="csrfField">
 
             <div class="field">
                 <label for="fullname">Nombre y apellidos</label>
                 <input
                         id="fullname"
-                        name="fullname"
+                        name="fullName"
                         type="text"
                         placeholder="Tony Stark"
                         autocomplete="name"
@@ -118,5 +118,14 @@
     </section>
 </main>
 <script src="js/register.js"></script>
+<script>
+    (function setCsrfFromCookie(){
+      function getCookie(name){
+        return document.cookie.split('; ').find(row => row.startsWith(name + '='))?.split('=')[1];
+      }
+      var token = getCookie('XSRF-TOKEN');
+      if (token) document.getElementById('csrfField').value = decodeURIComponent(token);
+    })();
+</script>
 </body>
 </html>

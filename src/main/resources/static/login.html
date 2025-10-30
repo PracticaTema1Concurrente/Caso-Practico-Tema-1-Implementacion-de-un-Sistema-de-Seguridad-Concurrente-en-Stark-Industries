@@ -79,39 +79,32 @@
 </main>
 
 <script>
-    // Mensajes por querystring (?error, ?logout, ?blocked, etc.)
-    (function () {
-      const params = new URLSearchParams(window.location.search);
+    (function(){
+      const p = new URLSearchParams(location.search);
       const msg = document.getElementById('msg');
       if (!msg) return;
-
-      if (params.has('error')) {
-        msg.textContent = '⚠️ Usuario o contraseña incorrectos';
-        msg.classList.add('msg--error');
-      } else if (params.has('logout')) {
-        msg.textContent = '✅ Has cerrado sesión correctamente';
+      if (p.has('registered')) {
+        msg.textContent = '✅ Cuenta creada. Ya puedes iniciar sesión.';
         msg.classList.add('msg--ok');
-      } else if (params.has('blocked')) {
-        msg.textContent = '⛔ Cuenta bloqueada temporalmente por múltiples intentos';
-        msg.classList.add('msg--error');
       }
     })();
 
-    // Mostrar/ocultar contraseña
-    (function () {
-      const btn = document.querySelector('.toggle');
-      const input = document.getElementById('password');
-      if (!btn || !input) return;
+        // Mostrar/ocultar contraseña
+        (function () {
+          const btn = document.querySelector('.toggle');
+          const input = document.getElementById('password');
+          if (!btn || !input) return;
 
-      btn.addEventListener('click', () => {
-        const isPwd = input.type === 'password';
-        input.type = isPwd ? 'text' : 'password';
-        btn.setAttribute('aria-pressed', isPwd ? 'true' : 'false');
-      });
-    })();
+          btn.addEventListener('click', () => {
+            const isPwd = input.type === 'password';
+            input.type = isPwd ? 'text' : 'password';
+            btn.setAttribute('aria-pressed', isPwd ? 'true' : 'false');
+          });
+        })();
 
-    // Año dinámico
-    document.getElementById('year').textContent = new Date().getFullYear();
+        // Año dinámico
+        document.getElementById('year').textContent = new Date().getFullYear();
 </script>
+
 </body>
 </html>

@@ -1,73 +1,88 @@
 package com.starkindustries.domain;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import java.time.Instant;
 
 @Entity
-@Table(
-        name = "users",
-        uniqueConstraints = {
-                @UniqueConstraint(name = "uk_users_usuario", columnNames = "usuario"),
-                @UniqueConstraint(name = "uk_users_correo", columnNames = "correo")
-        }
-)
+@Table(name = "users", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_users_username", columnNames = "username"),
+        @UniqueConstraint(name = "uk_users_email", columnNames = "email")
+})
 public class User {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_usuario")
-    private Integer id;
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @Size(max = 100)
-    @Column(name = "nombre_apellidos")
-    private String nombreApellidos;
+    @Column(nullable = false)          private String fullName;
+    @Column(nullable = false)          private String username;   // lo que pides como "usuario"
+    @Column(nullable = false)          private String email;      // lo usaremos también como login si quieres
+    @Column(nullable = false)          private String password;   // encriptada (BCrypt)
+    @Column(nullable = false)          private boolean enabled = true;
+    @Column(nullable = false)          private String roles = "ROLE_USER"; // simple CSV: ROLE_USER,ROLE_ADMIN
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt = Instant.now();
 
-    @NotBlank
-    @Size(max = 50)
-    @Column(name = "usuario", nullable = false, length = 50)
-    private String usuario;
+    public boolean isEnabled() {
+        return enabled;
+    }
 
-    @NotBlank
-    @Email
-    @Size(max = 80)
-    @Column(name = "correo", nullable = false, length = 80)
-    private String correo;
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 
-    @NotBlank
-    @Size(max = 100)
-    @Column(name = "password", nullable = false, length = 100)
-    private String password;
+    public Long getId() {
+        return id;
+    }
 
-    @NotBlank
-    @Size(max = 50)
-    @Column(name = "authority", nullable = false, length = 50)
-    private String authority;
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    @Column(name = "enabled", nullable = false)
-    private boolean enabled;
+    public String getFullName() {
+        return fullName;
+    }
 
-    // Getters y setters
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
 
-    public Integer getId() { return id; }
-    public void setId(Integer id) { this.id = id; }
+    public String getUsername() {
+        return username;
+    }
 
-    public String getNombreApellidos() { return nombreApellidos; }
-    public void setNombreApellidos(String nombreApellidos) { this.nombreApellidos = nombreApellidos; }
+    public void setUsername(String username) {
+        this.username = username;
+    }
 
-    public String getUsuario() { return usuario; }
-    public void setUsuario(String usuario) { this.usuario = usuario; }
+    public String getEmail() {
+        return email;
+    }
 
-    public String getCorreo() { return correo; }
-    public void setCorreo(String correo) { this.correo = correo; }
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
+    public String getPassword() {
+        return password;
+    }
 
-    public String getAuthority() { return authority; }
-    public void setAuthority(String authority) { this.authority = authority; }
+    public void setPassword(String password) {
+        this.password = password;
+    }
 
-    public boolean isEnabled() { return enabled; }
-    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    public String getRoles() {
+        return roles;
+    }
+
+    public void setRoles(String roles) {
+        this.roles = roles;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
 }

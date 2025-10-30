@@ -1,19 +1,25 @@
 package com.starkindustries.config.security;
 
+import com.starkindustries.domain.User;
+import com.starkindustries.domain.repository.UserRepo;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 import javax.sql.DataSource;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableMethodSecurity
@@ -24,51 +30,69 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // Usuarios desde BBDD
+    // Cargamos usuarios desde tu propia tabla (UserRepo)
     @Bean
-    UserDetailsService users(DataSource dataSource) {
-        return new JdbcUserDetailsManager(dataSource);
+    UserDetailsService userDetailsService(UserRepo userRepo) {
+        return username -> {
+            // Permite login por username o por email
+            User u = userRepo.findByUsername(username)
+                    .or(() -> userRepo.findByEmail(username))
+                    .orElseThrow(() -> new UsernameNotFoundException("No existe usuario: " + username));
+
+            var authorities = Arrays.stream(u.getRoles().split(","))
+                    .map(String::trim)
+                    .filter(r -> !r.isEmpty())
+                    .map(r -> r.startsWith("ROLE_") ? r : "ROLE_" + r)
+                    .map(SimpleGrantedAuthority::new)
+                    .collect(Collectors.toList());
+
+            UserDetails details = org.springframework.security.core.userdetails.User
+                    .withUsername(u.getUsername())
+                    .password(u.getPassword())
+                    .authorities(authorities)
+                    .accountLocked(false)
+                    .disabled(!u.isEnabled())
+                    .build();
+            return details;
+        };
+    }
+
+    @Bean
+    DaoAuthenticationProvider authProvider(UserDetailsService uds, PasswordEncoder encoder) {
+        DaoAuthenticationProvider p = new DaoAuthenticationProvider();
+        p.setUserDetailsService(uds);
+        p.setPasswordEncoder(encoder);
+        return p;
     }
 
     @Bean
     SecurityFilterChain security(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        // estáticos y páginas públicas
-                        .requestMatchers("/login.html", "/register.html",  "/css/**", "/js/**", "/fonts/**").permitAll()
-                        // permitir el POST del registro
-                        .requestMatchers("/auth/register", "/auth/login").permitAll()
-                        // lecturas públicas (si lo deseas)
-                        .requestMatchers("/api/sensors/readings/**").permitAll()
-                        // resto de la API requiere auth
-                        .requestMatchers("/api/**").authenticated()
-                        // cualquier otra ruta requiere auth
+                        .requestMatchers(
+                                "/login.html", "/register.html",
+                                "/css/**", "/js/**", "/images/**",
+                                "/auth/register" // permitir el POST de registro
+                        ).permitAll()
+                        .requestMatchers("/index.html").authenticated()
                         .anyRequest().authenticated()
                 )
-                // Login por formulario (alineado con tu <form action="/auth/login">)
                 .formLogin(form -> form
-                        .loginPage("/login.html")
-                        .loginProcessingUrl("/auth/login")
-                        .defaultSuccessUrl("/", true)
-                        .failureUrl("/login.html?error")
+                        .loginPage("/login.html")          // página de login
+                        .loginProcessingUrl("/auth/login") // endpoint del form
+                        .defaultSuccessUrl("/index.html", true) // a dónde ir al loguear
+                        .failureUrl("/login.html?error")   // feedback de error
                         .permitAll()
                 )
                 .logout(logout -> logout
-                        .logoutUrl("/logout")
+                        .logoutUrl("/auth/logout")
                         .logoutSuccessUrl("/login.html?logout")
                         .permitAll()
                 )
-                // Para la API, que responda 401 en vez de redirigir a /login.html
-                .exceptionHandling(ex -> ex
-                        .defaultAuthenticationEntryPointFor(
-                                new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
-                                new AntPathRequestMatcher("/api/**")
-                        )
-                )
-                // Si tu HTML es estático, puedes desactivar CSRF globalmente;
-                // si prefieres granular, ignora solo API y registro:
-                .csrf(csrf -> csrf.disable());
-        // .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**", "/auth/register", "/auth/login"));
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .ignoringRequestMatchers("/auth/logout") // opcional
+                );
 
         return http.build();
     }
