@@ -19,7 +19,7 @@
         <!-- Mensajes dinámicos -->
         <div id="msg" class="msg" role="status" aria-live="polite"></div>
 
-        <form id="registerForm" action="/auth/register" method="post" novalidate>
+        <form id="registerForm" action="/auth/register/debug" method="post" novalidate>
             <input type="hidden" name="_csrf" id="csrfField">
 
             <div class="field">
@@ -78,6 +78,18 @@
         </footer>
     </section>
 </main>
+<script>
+    (function(){
+      function getCookie(name){
+        return document.cookie.split('; ').find(row => row.startsWith(name+'='))?.split('=')[1];
+      }
+      document.addEventListener('DOMContentLoaded', function(){
+        const token = getCookie('XSRF-TOKEN');
+        const field = document.getElementById('csrfField');
+        if (token && field) field.value = decodeURIComponent(token);
+      });
+    })();
+</script>
 
 <script src="js/register.js"></script>
 </body>

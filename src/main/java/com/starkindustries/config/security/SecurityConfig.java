@@ -4,6 +4,7 @@ import com.starkindustries.domain.User;
 import com.starkindustries.domain.repository.UserRepo;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -71,9 +72,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/login.html", "/register.html",
-                                "/css/**", "/js/**", "/images/**",
-                                "/auth/register" // permitir el POST de registro
+                                "/css/**", "/js/**", "/images/**"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/register/debug").permitAll()
                         .requestMatchers("/index.html").authenticated()
                         .anyRequest().authenticated()
                 )
@@ -91,7 +93,7 @@ public class SecurityConfig {
                 )
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .ignoringRequestMatchers("/auth/logout") // opcional
+                        .ignoringRequestMatchers("/auth/register/debug")
                 );
 
         return http.build();

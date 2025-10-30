@@ -2,6 +2,9 @@ package com.starkindustries.service;
 
 import com.starkindustries.domain.User;
 import com.starkindustries.domain.repository.UserRepo;
+import com.starkindustries.web.AuthController;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,6 +13,8 @@ import java.util.List;
 
 @Service
 public class UserService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
     private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
@@ -33,6 +38,9 @@ public class UserService {
         u.setPassword(passwordEncoder.encode(newUser.getPassword()));
         u.setEnabled(true);
         u.setRoles("BASIC");
+
+        log.info("Hemos creado un usuario: " + newUser.getUsername());
+
         return userRepo.save(u);
     }
 

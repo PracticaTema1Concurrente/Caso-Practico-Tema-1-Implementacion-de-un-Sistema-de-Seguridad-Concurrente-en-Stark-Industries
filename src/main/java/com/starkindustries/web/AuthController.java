@@ -48,7 +48,7 @@ public class AuthController {
     }
 
     // ====== FORM register.html → recoger parámetros explícitos ======
-    @PostMapping(value = "/register", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+    @PostMapping(value = "/register", consumes = MediaType.APPLICATION_JSON_VALUE)
     public String registerForm(
             @RequestParam("fullName") String fullName,
             @RequestParam("username") String username,
@@ -56,16 +56,12 @@ public class AuthController {
             @RequestParam("password") String password,
             RedirectAttributes ra
     ) {
-        // Traza clara en servidor
-        System.out.println("SUBMIT"); // consola del servidor
-        log.info("SUBMIT /auth/register fullName='{}' username='{}' email='{}'", fullName, username, email);
-
         try {
             User u = new User();
             u.setFullName(fullName);
             u.setUsername(username);
             u.setEmail(email);
-            u.setPassword(password); // el servicio ya la encripta con BCrypt
+            u.setPassword(password);
 
             userService.register(u);
             return "redirect:/login.html?registered=1";
@@ -94,4 +90,34 @@ public class AuthController {
         userService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping(value="/register/debug", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public Map<String,Object> registerDebug(
+            @RequestParam String fullName,
+            @RequestParam String username,
+            @RequestParam String email,
+            @RequestParam String password
+    ){
+        log.info("DEBUG form: name='{}' user='{}' email='{}' passLen={}",
+                fullName, username, email, password != null ? password.length() : 0);
+
+        User u = new User();
+        u.setFullName(fullName);
+        u.setUsername(username);
+        u.setEmail(email);
+        u.setPassword(password);
+
+        userService.register(u);
+
+        return Map.of(
+                "ok", true,
+                "fullName", fullName,
+                "username", username,
+                "email", email,
+                "passwordLen", password.length()
+        );
+    }
+
+
 }
