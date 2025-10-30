@@ -108,17 +108,70 @@ function validateRegisterForm(ev){
   console.log('Resultado global:', ok ? '✅ Todo válido' : '❌ Hay errores');
   console.groupEnd();
 
-  // --- Envío o bloqueo ---
-  if (!ok) {
-    ev?.preventDefault();
-    form.reportValidity?.();
-    const firstInvalid = [fullNm, user, email, pass1, pass2, terms].find(el => !el.checkValidity());
-    firstInvalid?.focus();
-    return false; // útil si lo usas en onsubmit
-  }
+    if (!ok) {
+      ev?.preventDefault();
+      form.reportValidity?.();
+      const firstInvalid = [fullNm, user, email, pass1, pass2, terms].find(el => !el.checkValidity());
+      firstInvalid?.focus();
+      return false;
+    }
 
-  // Si el botón es type="button", enviamos nosotros:
-  if (form && ev?.target?.type === 'button') form.submit();
+    // ✅ Si todo es válido: enviar por fetch y mostrar feedback
+    const msg = document.getElementById('msg');
+    const csrf = document.getElementById('csrfField')?.value || '';
 
-  return true;
+    const body = new URLSearchParams({
+      fullName: fullNm.value.trim(),
+      username: user.value.trim(),
+      email: email.value.trim(),
+      password: pass1.value
+    });
+    if (csrf) body.append('_csrf', csrf);
+
+    fetch('/auth/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+        // En Spring con CookieCsrfTokenRepository, también puedes mandar el header:
+        'X-XSRF-TOKEN': csrf
+      },
+      body
+    })
+    .then(async res => {
+      const data = await res.json().catch(()=> ({}));
+      if (res.ok && data.ok) {
+        // Éxito: pinta feedback y redirige suave
+        msg.textContent = data.message || 'Registrado correctamente';
+        msg.classList.remove('error');
+        msg.classList.add('success');
+        // Redirige al login después de un pequeño delay
+        setTimeout(() => { window.location.href = '/login.html?registered=1'; }, 900);
+      } else {
+        // Error: muestra mensaje y marca el campo implicado
+        const errorText = data.error || 'No se pudo registrar';
+        msg.textContent = errorText;
+        msg.classList.remove('success');
+        msg.classList.add('error');
+
+        if (data.field === 'email') {
+          setFieldError(email, errorText);
+          email.focus();
+        } else if (data.field === 'username') {
+          setFieldError(user, errorText);
+          user.focus();
+        } else {
+          // error genérico
+          setFieldError(email, ''); setFieldError(user, '');
+        }
+        form.reportValidity?.();
+      }
+    })
+    .catch(err => {
+      msg.textContent = 'Error de red. Inténtalo de nuevo.';
+      msg.classList.remove('success');
+      msg.classList.add('error');
+      console.error(err);
+    });
+
+    return true;
 }

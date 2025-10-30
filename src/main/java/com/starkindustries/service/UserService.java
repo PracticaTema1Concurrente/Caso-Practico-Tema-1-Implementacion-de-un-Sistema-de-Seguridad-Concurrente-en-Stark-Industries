@@ -9,7 +9,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -37,11 +39,17 @@ public class UserService {
         u.setEmail(newUser.getEmail().trim().toLowerCase());
         u.setPassword(passwordEncoder.encode(newUser.getPassword()));
         u.setEnabled(true);
-        u.setRoles("BASIC");
+        u.setRoles("OPERATOR");
 
         log.info("Hemos creado un usuario: " + newUser.getUsername());
 
         return userRepo.save(u);
+    }
+
+    public boolean checkCredentials(String username, String rawPassword) {
+        return userRepo.findByUsername(username)
+                .map(u -> passwordEncoder.matches(rawPassword, u.getPassword()))
+                .orElse(false);
     }
 
     public List<User> listAll() {
@@ -58,5 +66,19 @@ public class UserService {
 
     public void delete(Long id) {
         userRepo.deleteById(id);
+    }
+
+    @Transactional
+    public User updateRoles(Long userId, String rolesCsv) {
+        User u = userRepo.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no existe"));
+        // normaliza: quita espacios dobles y deja comas
+        String roles = Arrays.stream(rolesCsv.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(String::toUpperCase)
+                .collect(Collectors.joining(","));
+        u.setRoles(roles);
+        return userRepo.save(u);
     }
 }

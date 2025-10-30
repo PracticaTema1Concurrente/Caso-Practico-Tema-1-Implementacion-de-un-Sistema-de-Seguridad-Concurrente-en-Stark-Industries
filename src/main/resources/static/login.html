@@ -19,9 +19,9 @@
         <!-- Mensajes dinámicos -->
         <div id="msg" class="msg" role="status" aria-live="polite"></div>
 
-        <form action="/auth/login" method="post" novalidate>
+        <form id="loginForm" action="/auth/login" method="post" novalidate>
             <!-- CSRF (si tu backend lo usa) -->
-            <input type="hidden" name="_csrf" value="{{csrfToken}}">
+            <input type="hidden" name="_csrf" id="csrfField">
 
             <div class="field">
                 <label for="username">Usuario</label>
@@ -62,7 +62,7 @@
                 <a class="link" href="/auth/forgot">¿Olvidaste tu contraseña?</a>
             </div>
 
-            <button type="submit" class="btn btn--primary">Entrar</button>
+            <button id="loginBtn" type="button" class="btn btn--primary">Entrar</button>
 
             <!-- 🆕 Enlace de registro -->
             <p class="muted" style="margin-top:10px">
@@ -80,30 +80,56 @@
 
 <script>
     (function(){
-      const p = new URLSearchParams(location.search);
-      const msg = document.getElementById('msg');
-      if (!msg) return;
-      if (p.has('registered')) {
-        msg.textContent = '✅ Cuenta creada. Ya puedes iniciar sesión.';
-        msg.classList.add('msg--ok');
-      }
+        console.log("HOLAHOLA");
+      const form = document.getElementById('loginForm');
+      const btn  = document.getElementById('loginBtn');
+      const msg  = document.getElementById('msg');
+      const user = document.getElementById('username');
+      const pass = document.getElementById('password');
+
+      btn.addEventListener('click', async () => {
+        const username = user.value.trim();
+        const password = pass.value; // variable JS en memoria
+
+        if (!username || !password) {
+          msg.textContent = 'Introduce usuario y contraseña';
+          msg.classList.add('msg--error');
+          return;
+        }
+
+        // Guardamos variables de los campos
+        sessionStorage.setItem('si.username', username);
+        // ⚠️ No guardamos password en almacenamiento persistente por seguridad
+
+        // Llamada GET a /auth/login devolviendo 0 o -1
+        const url = `/auth/login?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
+
+        try {
+          const res = await fetch(url, { method: 'GET' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          // El backend devuelve un número JSON (0 o -1). P.ej. 0
+          const code = await res.json();
+
+          if (code === 0) {
+            msg.textContent = '✅ Acceso concedido, entrando...';
+            msg.classList.remove('msg--error');
+            msg.classList.add('msg--ok');
+            setTimeout(() => { window.location.href = '/index.html'; }, 300);
+          } else {
+            msg.textContent = '❌ Usuario o contraseña incorrectos';
+            msg.classList.remove('msg--ok');
+            msg.classList.add('msg--error');
+            pass.value = '';
+            pass.focus();
+          }
+        } catch (e) {
+          console.error(e);
+          msg.textContent = 'Error de red. Inténtalo de nuevo.';
+          msg.classList.remove('msg--ok');
+          msg.classList.add('msg--error');
+        }
+      });
     })();
-
-        // Mostrar/ocultar contraseña
-        (function () {
-          const btn = document.querySelector('.toggle');
-          const input = document.getElementById('password');
-          if (!btn || !input) return;
-
-          btn.addEventListener('click', () => {
-            const isPwd = input.type === 'password';
-            input.type = isPwd ? 'text' : 'password';
-            btn.setAttribute('aria-pressed', isPwd ? 'true' : 'false');
-          });
-        })();
-
-        // Año dinámico
-        document.getElementById('year').textContent = new Date().getFullYear();
 </script>
 
 </body>

@@ -217,6 +217,11 @@ tr:hover td {
   padding:10px 0 0;
 }
 
+.locked .actions button,
+.locked input,
+.locked select { opacity:.6; pointer-events:none }
+.btn-sm[disabled] { opacity:.6; cursor:not-allowed }
+
 @media (max-width: 980px) {
     main {
         grid-template-columns: 1fr

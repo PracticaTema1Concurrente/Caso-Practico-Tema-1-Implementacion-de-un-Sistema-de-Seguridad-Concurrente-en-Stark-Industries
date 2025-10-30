@@ -19,7 +19,7 @@
         <!-- Mensajes dinámicos -->
         <div id="msg" class="msg" role="status" aria-live="polite"></div>
 
-        <form id="registerForm" action="/auth/register/debug" method="post" novalidate>
+        <form id="registerForm" action="/auth/register" method="post" novalidate>
             <input type="hidden" name="_csrf" id="csrfField">
 
             <div class="field">
@@ -66,7 +66,7 @@
             </div>
 
             <!-- 👇 Aquí está el cambio -->
-            <button id="submitBtn" type="submit" class="btn btn--primary" onclick="validateRegisterForm(event)">Crear cuenta</button>
+            <button id="submitBtn" type="button" class="btn btn--primary" onclick="validateRegisterForm(event)">Crear cuenta</button>
 
             <p class="muted" style="margin-top:10px">
                 ¿Ya tienes cuenta? <a class="link" href="login.html">Inicia sesión</a>

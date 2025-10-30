@@ -6,7 +6,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -16,7 +18,10 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfFilter;
 
 import javax.sql.DataSource;
 import java.util.Arrays;
@@ -29,6 +34,16 @@ public class SecurityConfig {
     @Bean
     PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+
+    @Bean
+    SecurityContextRepository securityContextRepository() {
+        return new HttpSessionSecurityContextRepository();
     }
 
     // Cargamos usuarios desde tu propia tabla (UserRepo)
@@ -67,23 +82,25 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain security(HttpSecurity http) throws Exception {
+    public SecurityFilterChain security(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/login.html", "/register.html",
-                                "/css/**", "/js/**", "/images/**"
-                        ).permitAll()
+                        // público:
+                        .requestMatchers("/login.html", "/register.html", "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/register").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/auth/register/debug").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/auth/all", "/auth/{id}", "/auth/me", "/auth/login").permitAll()
+
+                        // API de sensores:
+                        .requestMatchers(HttpMethod.GET,  "/api/devices/**").hasAnyRole("ADMIN","OPERATOR")
+                        .requestMatchers(HttpMethod.POST, "/api/devices/**").hasRole("ADMIN") // start/stop/cambiar periodo
+                        .requestMatchers(HttpMethod.DELETE, "/api/devices/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // resto:
                         .requestMatchers("/index.html").authenticated()
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
-                        .loginPage("/login.html")          // página de login
-                        .loginProcessingUrl("/auth/login") // endpoint del form
-                        .defaultSuccessUrl("/index.html", true) // a dónde ir al loguear
-                        .failureUrl("/login.html?error")   // feedback de error
+                        .loginPage("/login.html")
                         .permitAll()
                 )
                 .logout(logout -> logout
@@ -93,8 +110,10 @@ public class SecurityConfig {
                 )
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .ignoringRequestMatchers("/auth/register/debug")
-                );
+                        .ignoringRequestMatchers(
+                                "/auth/register", "/auth/all", "/auth/login", "/auth/{id}"
+                        )
+                ).addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class);
 
         return http.build();
     }

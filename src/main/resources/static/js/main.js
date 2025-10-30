@@ -4,7 +4,7 @@ const API = {
   devices: '/api/devices',
   start: (id) => `/api/devices/${id}/start`,
   stop: (id) => `/api/devices/${id}/stop`,
-  del:  (id) => `/api/devices/${id}`, // 🆕 eliminar uno
+  del:  (id) => `/api/devices/${id}`, // eliminar uno
 };
 
 // --- Helpers DOM/estado ---
@@ -18,9 +18,8 @@ let allReadings = [];
 let filtered = [];
 let page = 1;
 let pageSize = 10;
-
-// 🆕 Lista local de sensores (solo en memoria durante la ejecución)
 let localDevices = [];
+let isAdmin = false;
 
 // --- UI helpers ---
 function showToast(msg) {
@@ -32,19 +31,16 @@ function showToast(msg) {
 function authHeader() {
   const pair = el('auth') ? el('auth').value.trim() : '';
   if (!pair) return {};
-  try {
-    return { Authorization: 'Basic ' + btoa(pair) };
-  } catch {
-    return {};
-  }
+  try { return { Authorization: 'Basic ' + btoa(pair) }; } catch { return {}; }
+}
+
+function getCookie(name){
+  const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  return m ? m.pop() : '';
 }
 
 function fmtTs(iso) {
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
+  try { return new Date(iso).toLocaleString(); } catch { return iso; }
 }
 
 function statusPillByType(type, value) {
@@ -66,11 +62,51 @@ function statusPillByType(type, value) {
   return '<span class="pill ok">–</span>';
 }
 
-// 🆕 Genera el siguiente ID según el tipo seleccionado
+// Genera el siguiente ID según el tipo seleccionado
 function nextSensorIdForType(type) {
   const prefix = type === 'TEMP' ? 'T-' : type === 'HUM' ? 'H-' : 'M-';
   const count = localDevices.filter((d) => d.type === type).length;
   return `${prefix}${count + 1}`;
+}
+
+// Para POST con CSRF activo
+function commonPostOpts(headers={}) {
+  return {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'X-XSRF-TOKEN': getCookie('XSRF-TOKEN'),
+      ...headers
+    }
+  };
+}
+
+async function fetchMe() {
+  try {
+    const res = await fetch('/auth/me', { credentials: 'same-origin' });
+    if (!res.ok) return { ok:false, roles:[] };
+    return await res.json();
+  } catch { return { ok:false, roles:[] }; }
+}
+
+// Bloquear/desbloquear la UI de “Dispositivos” según rol
+function setAdminPanelEnabled(enabled) {
+  const card = document.querySelector('section.card'); // 1ª card = Dispositivos
+  if (card) card.classList.toggle('locked', !enabled);
+
+  const lock = document.getElementById('adminLock');
+  if (lock) lock.style.display = enabled ? 'none' : 'inline';
+
+  // Deshabilitar controles visibles (reload puede quedar activo)
+  ['createDeviceBtn','reloadDevicesBtn','deleteAllDevicesBtn','d_sensorId','d_type','d_period']
+    .forEach(id => {
+      const c = el(id);
+      if (!c) return;
+      const shouldDisable = !enabled && id !== 'reloadDevicesBtn';
+      c.disabled = shouldDisable;
+      c.setAttribute('aria-disabled', String(shouldDisable));
+      if (shouldDisable) c.title = 'Requiere rol ADMIN'; else c.removeAttribute('title');
+    });
 }
 
 // --- DEVICES ---
@@ -83,193 +119,140 @@ async function loadDevices() {
     return;
   }
   const data = await res.json();
-  // 🪵 LOG 1: justo cuando llega la respuesta del backend
   console.log('[LOG 1] Devices desde API:', data);
 
   localDevices = Array.isArray(data) ? data : [];
   renderDevices(localDevices);
-  el('d_sensorId').value = nextSensorIdForType(el('d_type').value);
+  if (el('d_type')) el('d_sensorId').value = nextSensorIdForType(el('d_type').value);
 }
 
 function deviceActionButton(d) {
-  // 🪵 LOG 3: cuando se crea el botón y se asigna el data-id
   console.log(`[LOG 3] Creando botón para device id=${d.id}`);
+  const disabledAttr = isAdmin ? '' : 'disabled title="Requiere rol ADMIN"';
   const startStopBtn = d.active
-    ? `<button class="btn-sm" data-id="${d.id}" data-action="stop">Stop</button>`
-    : `<button class="btn-sm primary" data-id="${d.id}" data-action="start">Start</button>`;
-
-  // 🆕 botón eliminar
-  const deleteBtn =
-    `<button class="btn-sm" data-id="${d.id}" data-action="delete" style="margin-left:6px">Eliminar</button>`;
-
+    ? `<button class="btn-sm" ${disabledAttr} data-id="${d.id}" data-action="stop">Stop</button>`
+    : `<button class="btn-sm primary" ${disabledAttr} data-id="${d.id}" data-action="start">Start</button>`;
+  const deleteBtn = `<button class="btn-sm" ${disabledAttr} data-id="${d.id}" data-action="delete" style="margin-left:6px">Eliminar</button>`;
   return `${startStopBtn} ${deleteBtn}`;
 }
 
 function renderDevices(list) {
   if (!list || list.length === 0) {
-    devicesRows.innerHTML =
-      '<tr><td colspan="7" class="muted">Sin dispositivos.</td></tr>';
+    devicesRows.innerHTML = '<tr><td colspan="7" class="muted">Sin dispositivos.</td></tr>';
     return;
   }
-
   const sorted = [...list].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
-
-  devicesRows.innerHTML = sorted
-    .map((d) => {
-      // 🪵 LOG 2: cuando se genera la fila y el botón
-      console.log(`[LOG 2] Pintando fila -> id=${d.id}, sensorId=${d.sensorId}`);
-      return `
-        <tr data-device-id="${d.id ?? ''}">
-          <td>${d.id ?? ''}</td>
-          <td>${d.sensorId}</td>
-          <td>${d.type}</td>
-          <td>${d.unit ?? ''}</td>
-          <td>${d.active ? 'Sí' : 'No'}</td>
-          <td>${d.periodMs ?? ''}</td>
-          <td class="actions-col">
-            ${deviceActionButton(d)}
-          </td>
-        </tr>`;
-    })
-    .join('');
+  devicesRows.innerHTML = sorted.map((d) => {
+    console.log(`[LOG 2] Pintando fila -> id=${d.id}, sensorId=${d.sensorId}`);
+    return `
+      <tr data-device-id="${d.id ?? ''}">
+        <td>${d.id ?? ''}</td>
+        <td>${d.sensorId}</td>
+        <td>${d.type}</td>
+        <td>${d.unit ?? ''}</td>
+        <td>${d.active ? 'Sí' : 'No'}</td>
+        <td>${d.periodMs ?? ''}</td>
+        <td class="actions-col">${deviceActionButton(d)}</td>
+      </tr>`;
+  }).join('');
 }
 
-// 🆕 Delegación de eventos: usar SIEMPRE el id de la fila como fuente de verdad
+// Delegación de eventos
 devicesRows.addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-action]');
   if (!btn) return;
 
+  if (!isAdmin) { showToast('🔒 No tienes permiso (requiere rol ADMIN)'); return; }
+
   const action = btn.getAttribute('data-action');
-  const idFromBtn = btn.getAttribute('data-id');                 // id del botón
   const tr = btn.closest('tr');
-  const idFromRow = tr?.getAttribute('data-device-id') || '';    // autoridad
-  const idFromCell = tr?.querySelector('td')?.textContent?.trim() || ''; // id visible
-
-  // 🪵 LOG 4: comparativa completa
-  console.log(`[LOG 4] CLICK ${action.toUpperCase()} -> btn.data-id=${idFromBtn} | tr.data-device-id=${idFromRow} | firstCell=${idFromCell}`);
-
-  if (idFromBtn !== idFromRow || idFromRow !== idFromCell) {
-    console.warn('[WARN] Inconsistencia de IDs en la fila:', {
-      idFromBtn, idFromRow, idFromCell, html: tr?.outerHTML
-    });
-  }
-
-  // Usamos SIEMPRE el id de la fila
-  const id = idFromRow;
+  const id = tr?.getAttribute('data-device-id') || '';
 
   if (action === 'start') startDevice(id);
   else if (action === 'stop') stopDevice(id);
-  else if (action === 'delete') deleteDevice(id); // 🆕
+  else if (action === 'delete') deleteDevice(id);
 });
 
 async function createDevice() {
+  if (!isAdmin) { showToast('🔒 No tienes permiso (ADMIN)'); return; }
+
   const sensorId = el('d_sensorId').value.trim();
   const type = el('d_type').value;
   const periodMs = parseInt(el('d_period').value || '0', 10);
 
-  if (!sensorId || !type) {
-    showToast('Completa sensorId y type');
-    return;
-  }
+  if (!sensorId || !type) { showToast('Completa sensorId y type'); return; }
   if (Number.isNaN(periodMs) || periodMs < 2500 || periodMs > 5000) {
-    showToast('periodMs debe estar entre 2500 y 5000');
-    return;
+    showToast('periodMs debe estar entre 2500 y 5000'); return;
   }
 
   const res = await fetch(API.devices, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    ...commonPostOpts({ 'Content-Type': 'application/json', ...authHeader() }),
     body: JSON.stringify({ sensorId, type, periodMs }),
   });
-
-  if (!res.ok) {
-    showToast('Error creando dispositivo (' + res.status + ')');
-    return;
-  }
+  if (!res.ok) { showToast('Error creando dispositivo (' + res.status + ')'); return; }
 
   const created = await res.json();
   localDevices.push(created);
   renderDevices(localDevices);
   showToast('Dispositivo creado');
-
-  // 🆕 Actualiza autocompletado para el siguiente sensor
   el('d_sensorId').value = nextSensorIdForType(type);
-  el('d_period').value = '2500'; // valor mínimo por defecto
+  el('d_period').value = '2500';
 }
 
 async function startDevice(id) {
+  if (!isAdmin) { showToast('🔒 No tienes permiso (ADMIN)'); return; }
   console.log(`[API] POST ${API.start(id)} (deviceId=${id})`);
-  const res = await fetch(API.start(id), {
-    method: 'POST',
-    headers: { ...authHeader() },
-  });
-  if (!res.ok) {
-    showToast('No se pudo iniciar (' + res.status + ')');
-    return;
-  }
+  const res = await fetch(API.start(id), { ...commonPostOpts({ ...authHeader() }) });
+  if (!res.ok) { showToast('No se pudo iniciar (' + res.status + ')'); return; }
   showToast(`Sensor ${id} iniciado`);
   await loadDevices();
 }
 
 async function stopDevice(id) {
+  if (!isAdmin) { showToast('🔒 No tienes permiso (ADMIN)'); return; }
   console.log(`[API] POST ${API.stop(id)} (deviceId=${id})`);
-  const res = await fetch(API.stop(id), {
-    method: 'POST',
-    headers: { ...authHeader() },
-  });
-  if (!res.ok) {
-    showToast('No se pudo detener (' + res.status + ')');
-    return;
-  }
+  const res = await fetch(API.stop(id), { ...commonPostOpts({ ...authHeader() }) });
+  if (!res.ok) { showToast('No se pudo detener (' + res.status + ')'); return; }
   showToast(`Sensor ${id} detenido`);
   await loadDevices();
 }
 
-// 🆕 Eliminar un dispositivo
 async function deleteDevice(id) {
+  if (!isAdmin) { showToast('🔒 No tienes permiso (ADMIN)'); return; }
   if (!id) return;
-  const sure = confirm(`¿Eliminar el sensor ${id}? Esta acción no se puede deshacer.`);
-  if (!sure) return;
+  if (!confirm(`¿Eliminar el sensor ${id}? Esta acción no se puede deshacer.`)) return;
 
   console.log(`[API] DELETE ${API.del(id)} (deviceId=${id})`);
   const res = await fetch(API.del(id), {
     method: 'DELETE',
-    headers: { ...authHeader() },
+    credentials: 'same-origin',
+    headers: { 'X-XSRF-TOKEN': getCookie('XSRF-TOKEN'), ...authHeader() },
   });
 
   if (res.status === 204 || res.ok) {
     showToast(`Sensor ${id} eliminado`);
-    // quita localmente y repinta rápido; luego refresco de servidor
     localDevices = localDevices.filter((d) => String(d.id) !== String(id));
     renderDevices(localDevices);
     await loadDevices();
-    return;
-  }
-
-  if (res.status === 404) {
+  } else if (res.status === 404) {
     showToast('No existe ese sensor (404)');
   } else {
     showToast('Error eliminando (' + res.status + ')');
   }
 }
 
-// 🆕 Eliminar TODOS los dispositivos
 async function deleteAllDevices() {
-  const sure = confirm('¿Eliminar TODOS los sensores? Se detendrán tareas y se borrarán de la BBDD.');
-  if (!sure) return;
+  if (!isAdmin) { showToast('🔒 No tienes permiso (ADMIN)'); return; }
+  if (!confirm('¿Eliminar TODOS los sensores? Se detendrán tareas y se borrarán de la BBDD.')) return;
 
   console.log(`[API] DELETE ${API.devices} (all)`);
   const res = await fetch(API.devices, {
     method: 'DELETE',
-    headers: { ...authHeader() },
+    credentials: 'same-origin',
+    headers: { 'X-XSRF-TOKEN': getCookie('XSRF-TOKEN'), ...authHeader() },
   });
+  if (!res.ok) { showToast('Error al borrar todos (' + res.status + ')'); return; }
 
-  if (!res.ok) {
-    showToast('Error al borrar todos (' + res.status + ')');
-    return;
-  }
-
-  // Mensaje del backend tipo: "Se eliminaron X sensores"
   const text = await res.text();
   showToast(text || 'Sensores eliminados');
   localDevices = [];
@@ -282,10 +265,7 @@ async function loadReadings() {
   const res = await fetch(API.readings, {
     headers: { Accept: 'application/json', ...authHeader() },
   });
-  if (!res.ok) {
-    showToast('Error cargando lecturas (' + res.status + ')');
-    return;
-  }
+  if (!res.ok) { showToast('Error cargando lecturas (' + res.status + ')'); return; }
   const data = await res.json();
   allReadings = Array.isArray(data) ? data : [];
   applyFilters();
@@ -316,53 +296,38 @@ function renderPage() {
   }
 
   const total = filtered.length;
-  const pSize = pageSize;
-  const totalPages = Math.max(1, Math.ceil(total / pSize));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   if (page > totalPages) page = totalPages;
-  const start = (page - 1) * pSize;
-  const slice = filtered.slice(start, start + pSize);
+  const start = (page - 1) * pageSize;
+  const slice = filtered.slice(start, start + pageSize);
 
-  rows.innerHTML = slice
-    .map((r) => {
-      const device = r.device || {};
-      const type = (device.type || r.type || '').toUpperCase();
-      const unit = r.unit || device.unit || '';
-      const value = r.value;
-      const status = statusPillByType(type, value);
-      const sensorId = r.sensorId || device.sensorId || '';
-      return `
-        <tr>
-          <td>${r.id ?? ''}</td>
-          <td>${sensorId}</td>
-          <td>${type}</td>
-          <td>${
-            typeof value === 'number' && value.toFixed
-              ? value.toFixed(2)
-              : value ?? ''
-          }</td>
-          <td>${status}</td>
-          <td>${unit}</td>
-          <td>${fmtTs(r.createdAt || r.timestamp)}</td>
-        </tr>`;
-    })
-    .join('');
+  rows.innerHTML = slice.map((r) => {
+    const device = r.device || {};
+    const type = (device.type || r.type || '').toUpperCase();
+    const unit = r.unit || device.unit || '';
+    const value = r.value;
+    const status = statusPillByType(type, value);
+    const sensorId = r.sensorId || device.sensorId || '';
+    return `
+      <tr>
+        <td>${r.id ?? ''}</td>
+        <td>${sensorId}</td>
+        <td>${type}</td>
+        <td>${typeof value === 'number' && value.toFixed ? value.toFixed(2) : value ?? ''}</td>
+        <td>${status}</td>
+        <td>${unit}</td>
+        <td>${fmtTs(r.createdAt || r.timestamp)}</td>
+      </tr>`;
+  }).join('');
 
   el('pageInfo').textContent = `Página ${page}/${totalPages}`;
 }
 
 // --- Paginación ---
-el('prevPage').addEventListener('click', () => {
-  if (page > 1) {
-    page--;
-    renderPage();
-  }
-});
+el('prevPage').addEventListener('click', () => { if (page > 1) { page--; renderPage(); } });
 el('nextPage').addEventListener('click', () => {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  if (page < totalPages) {
-    page++;
-    renderPage();
-  }
+  if (page < totalPages) { page++; renderPage(); }
 });
 el('pageSize').addEventListener('change', (e) => {
   pageSize = parseInt(e.target.value, 10) || 10;
@@ -372,39 +337,39 @@ el('pageSize').addEventListener('change', (e) => {
 
 // --- Filtros / acciones ---
 el('filterBtn').addEventListener('click', applyFilters);
-el('resetBtn').addEventListener('click', () => {
-  el('fSensor').value = '';
-  el('fType').value = '';
-  applyFilters();
-});
-el('refreshBtn').addEventListener('click', () => {
-  loadReadings();
-});
+el('resetBtn').addEventListener('click', () => { el('fSensor').value = ''; el('fType').value = ''; applyFilters(); });
+el('refreshBtn').addEventListener('click', () => { loadReadings(); });
 
 el('auto').addEventListener('change', (e) => {
-  if (e.target.checked) {
-    autoTimer = setInterval(loadReadings, 5000);
-  } else {
-    clearInterval(autoTimer);
-  }
+  if (e.target.checked) autoTimer = setInterval(loadReadings, 5000);
+  else clearInterval(autoTimer);
 });
 
-// 🆕 Autocompletar el campo sensorId al cambiar el tipo
+// Autocompletar sensorId al cambiar el tipo
 el('d_type').addEventListener('change', () => {
   const type = el('d_type').value;
   el('d_sensorId').value = nextSensorIdForType(type);
 });
 
-// --- Dispositivos actions ---
+// Dispositivos actions
 el('createDeviceBtn').addEventListener('click', createDevice);
 el('reloadDevicesBtn').addEventListener('click', loadDevices);
-// 🆕 botón "Borrar todos"
 el('deleteAllDevicesBtn').addEventListener('click', deleteAllDevices);
 
 // --- Inicialización ---
 (async function init() {
-  el('d_period').value = '2500'; // 🆕 valor por defecto mínimo
+  el('d_period').value = '2500';
   el('d_sensorId').value = nextSensorIdForType(el('d_type').value);
+
+  // 1) Saber quién soy y roles
+  const me = await fetchMe();
+  const roles = (me && me.ok && Array.isArray(me.roles)) ? me.roles : [];
+  isAdmin = roles.includes('ROLE_ADMIN');
+
+  // 2) Bloquear/Desbloquear panel de Dispositivos
+  setAdminPanelEnabled(isAdmin);
+
+  // 3) Cargar datos
   await loadDevices();
   await loadReadings();
 })();
