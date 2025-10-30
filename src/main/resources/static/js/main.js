@@ -5,18 +5,20 @@ const API = {
   start: (id) => `/api/devices/${id}/start`,
   stop: (id) => `/api/devices/${id}/stop`,
   del:  (id) => `/api/devices/${id}`, // eliminar uno
-  alertsRecent: (size=50) => `/api/alerts/recent?size=${encodeURIComponent(size)}`
+
+  // 🆕 Alertas peligrosas (solo DANGER guardadas en backend)
+  alertsRecent: (size = 50) => `/api/alerts/recent?size=${encodeURIComponent(size)}`
 };
 
 // --- Helpers DOM/estado ---
 const el = (id) => document.getElementById(id);
 const rows = el('rows');
 const devicesRows = el('devicesRows');
-const dangerRows = el('dangerRows');
+const dangerRows = el('dangerRows'); // puede no existir si aún no añadiste la tabla
 const toast = el('toast');
 
 let autoTimer = null;
-let autoDangerTimer = null;
+let autoDangerTimer = null; // 🆕 auto refresh alertas
 
 let allReadings = [];
 let filtered = [];
@@ -31,6 +33,7 @@ let firstReadingsInit = true;
 
 // --- UI helpers ---
 function showToast(msg) {
+  if (!toast) return;
   toast.textContent = msg;
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 2400);
@@ -43,7 +46,7 @@ function authHeader() {
 }
 
 function getCookie(name){
-  const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)`);
+  const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
   return m ? m.pop() : '';
 }
 
@@ -143,11 +146,12 @@ function deviceActionButton(d) {
 
 function renderDevices(list) {
   if (!list || list.length === 0) {
-    devicesRows.innerHTML = '<tr><td colspan="7" class="muted">Sin dispositivos.</td></tr>';
+    if (devicesRows) devicesRows.innerHTML = '<tr><td colspan="7" class="muted">Sin dispositivos.</td></tr>';
     return;
   }
   const sorted = [...list].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
-  devicesRows.innerHTML = sorted.map((d) => `
+  if (devicesRows) {
+    devicesRows.innerHTML = sorted.map((d) => `
       <tr data-device-id="${d.id ?? ''}">
         <td>${d.id ?? ''}</td>
         <td>${d.sensorId}</td>
@@ -157,10 +161,11 @@ function renderDevices(list) {
         <td>${d.periodMs ?? ''}</td>
         <td class="actions-col">${deviceActionButton(d)}</td>
       </tr>`).join('');
+  }
 }
 
 // Delegación de eventos
-devicesRows.addEventListener('click', (e) => {
+devicesRows?.addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-action]');
   if (!btn) return;
 
@@ -322,9 +327,12 @@ function applyFilters() {
 }
 
 function renderPage() {
+  if (!rows) return;
+
   if (filtered.length === 0) {
     rows.innerHTML = '<tr><td colspan="7" class="muted">Sin lecturas.</td></tr>';
-    el('pageInfo').textContent = 'Página 1/1';
+    const pageInfo = el('pageInfo');
+    if (pageInfo) pageInfo.textContent = 'Página 1/1';
     return;
   }
 
@@ -353,11 +361,13 @@ function renderPage() {
       </tr>`;
   }).join('');
 
-  el('pageInfo').textContent = `Página ${page}/${totalPages}`;
+  const pageInfo = el('pageInfo');
+  if (pageInfo) pageInfo.textContent = `Página ${page}/${totalPages}`;
 }
 
-// --- Alertas peligrosas ---
+// --- Alertas peligrosas (solo render si existe la tabla) ---
 async function loadDangerAlerts() {
+  if (!dangerRows) return; // si no hay tabla, no hacemos nada
   try {
     const res = await fetch(API.alertsRecent(50), { headers: { Accept: 'application/json' } });
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -371,6 +381,8 @@ async function loadDangerAlerts() {
 }
 
 function renderDangerAlerts(list) {
+  if (!dangerRows) return;
+
   if (!list || list.length === 0) {
     dangerRows.innerHTML = '<tr><td colspan="8" class="muted">Sin alertas peligrosas registradas…</td></tr>';
     return;
@@ -383,7 +395,7 @@ function renderDangerAlerts(list) {
     const unit = a.unit ?? '';
     const by = a.decidedBy ?? '';
     const date = fmtTs(a.createdAt);
-    const notes = (a.notes ?? '').slice(0, 160); // corta por si es largo
+    const notes = (a.notes ?? '').slice(0, 160);
     return `
       <tr>
         <td>${id}</td>
@@ -416,21 +428,12 @@ el('filterBtn')?.addEventListener('click', applyFilters);
 el('resetBtn')?.addEventListener('click', () => { el('fSensor').value = ''; el('fType').value = ''; applyFilters(); });
 el('refreshBtn')?.addEventListener('click', () => { loadReadings(); });
 
-// Auto-refresh lecturas
-el('auto')?.addEventListener('change', (e) => {
-  if (e.target.checked) autoTimer = setInterval(loadReadings, 5000);
-  else clearInterval(autoTimer);
-});
-
-// Auto-refresh alertas peligrosas
-el('refreshDangerBtn')?.addEventListener('click', loadDangerAlerts);
-el('autoDanger')?.addEventListener('change', (e) => {
-  if (e.target.checked) {
-    autoDangerTimer = setInterval(loadDangerAlerts, 10000);
-  } else {
-    clearInterval(autoDangerTimer);
-  }
-});
+const autoCb = el('auto');
+if (autoCb) {
+  autoCb.checked = true;                 // que aparezca marcada
+  clearInterval(autoTimer);
+  autoTimer = setInterval(loadReadings, 5000);  // <-- cambia 5000 si quieres otro intervalo
+}
 
 // Autocompletar sensorId al cambiar el tipo
 el('d_type')?.addEventListener('change', () => {
@@ -442,6 +445,15 @@ el('d_type')?.addEventListener('change', () => {
 el('createDeviceBtn')?.addEventListener('click', createDevice);
 el('reloadDevicesBtn')?.addEventListener('click', loadDevices);
 el('deleteAllDevicesBtn')?.addEventListener('click', deleteAllDevices);
+
+// 🆕 Botones/auto para alertas peligrosas (si existen)
+el('refreshDangerBtn')?.addEventListener('click', loadDangerAlerts);
+const autoDangerCb = el('autoDanger');
+if (autoDangerCb) {
+  autoDangerCb.checked = true;                 // que aparezca marcada
+  clearInterval(autoDangerTimer);
+  autoDangerTimer = setInterval(loadDangerAlerts, 10000); // <-- cambia 10000 si quieres otro intervalo
+}
 
 // --- Inicialización ---
 (async function init() {
@@ -456,8 +468,18 @@ el('deleteAllDevicesBtn')?.addEventListener('click', deleteAllDevices);
   // 2) Bloquear/Desbloquear panel de Dispositivos
   setAdminPanelEnabled(isAdmin);
 
-  // 3) Cargar datos
+  // 2.1) Mostrar/ocultar sección Usuarios según rol
+  const usersSection = document.getElementById('usersSection');
+  if (usersSection) usersSection.style.display = isAdmin ? 'block' : 'none';
+
+  // 2.2) Exponer estado de auth y disparar evento global (para users.js)
+  window.__IS_ADMIN__ = isAdmin;
+  document.dispatchEvent(new CustomEvent('auth-ready', { detail: { isAdmin } }));
+
+  // 3) Cargar datos principales
   await loadDevices();
   await loadReadings();
+
+  // 4) 🆕 Cargar (si existe tabla) las alertas peligrosas
   await loadDangerAlerts();
 })();

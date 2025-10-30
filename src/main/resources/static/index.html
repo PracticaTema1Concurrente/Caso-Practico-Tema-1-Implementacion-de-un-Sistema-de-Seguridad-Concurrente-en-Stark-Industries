@@ -109,7 +109,7 @@
                 <div class="left">
                     <button id="refreshBtn" class="ghost">Actualizar</button>
                     <label style="display:flex;align-items:center;gap:8px">
-                        <input type="checkbox" id="auto" />
+                        <input type="checkbox" id="auto" checked/>
                         <span class="muted">Auto cada 5 s</span>
                     </label>
                 </div>
@@ -159,7 +159,7 @@
             <div class="toolbar">
                 <button id="refreshDangerBtn" class="ghost">Actualizar</button>
                 <label style="display:flex;align-items:center;gap:8px">
-                    <input type="checkbox" id="autoDanger" />
+                    <input type="checkbox" id="autoDanger" checked/>
                     <span class="muted">Auto cada 10 s</span>
                 </label>
                 <span class="muted">Fuente: <code>/api/alerts/recent?size=50</code></span>
@@ -185,9 +185,67 @@
             </div>
         </div>
     </section>
+
+    <!-- Sección 4: Usuarios del sistema -->
+    <section id="usersSection" class="card" style="display:none">
+        <h2>Usuarios</h2>
+        <div class="content">
+            <div class="toolbar">
+                <div class="left" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                    <input id="usersSearch" placeholder="Buscar (nombre, usuario, email)" style="width:280px" />
+                    <button id="usersFilterBtn" class="ghost">Filtrar</button>
+                    <button id="usersResetBtn" class="ghost">Reset</button>
+                </div>
+                <div class="left" style="display:flex;gap:10px;align-items:center">
+                    <button id="usersRefreshBtn" class="ghost">Actualizar</button>
+                    <label style="display:flex;align-items:center;gap:8px">
+                        <input type="checkbox" id="usersAuto" checked />
+                        <span class="muted">Auto cada 15 s</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="table-wrap" style="max-height:48vh;margin-top:6px">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Usuario</th>
+                        <th>Email</th>
+                        <th>Activo</th>
+                        <th>Roles</th>
+                        <th>Creado</th>
+                    </tr>
+                    </thead>
+                    <tbody id="usersRows">
+                    <tr><td colspan="7" class="muted">Cargando usuarios…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación usuarios -->
+            <div class="pagination">
+                <button id="usersPrevPage" class="ghost">« Anterior</button>
+                <span id="usersPageInfo" class="muted">Página 1/1</span>
+                <button id="usersNextPage" class="ghost">Siguiente »</button>
+                <select id="usersPageSize" title="Filas por página" style="width:140px;margin-left:10px">
+                    <option value="10" selected>10 por página</option>
+                    <option value="20">20 por página</option>
+                    <option value="50">50 por página</option>
+                </select>
+            </div>
+
+            <p class="muted" style="margin-top:8px">
+                GET → <code>/auth/all</code>
+            </p>
+        </div>
+    </section>
+
 </main>
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="js/main.js"></script>
+<script src="js/users.js"></script>
 </body>
 </html>
