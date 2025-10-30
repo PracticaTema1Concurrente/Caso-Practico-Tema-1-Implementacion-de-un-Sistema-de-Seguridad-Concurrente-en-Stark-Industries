@@ -11,18 +11,26 @@
         .table-wrap{overflow:auto;border:1px solid #223;border-radius:10px}
         .table-wrap.devices{max-height:48vh}
         .table-wrap.readings{max-height:62vh}
+        .table-wrap.danger{max-height:42vh}
         .actions-col{white-space:nowrap}
         .btn-sm{padding:6px 10px;border-radius:8px;border:1px solid #2f4166;background:#0f1527;color:#e6eefc;cursor:pointer}
         .btn-sm.primary{background:#4ea1ff;color:#08111f;border-color:#3a7fd6;font-weight:600}
+        .toolbar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+        .ghost{padding:6px 10px;border-radius:8px;border:1px solid #2f4166;background:#0f1527;color:#e6eefc;cursor:pointer}
+        .muted{color:#9fb3d2}
+        .badge-danger{display:inline-flex;gap:6px;align-items:center;padding:2px 8px;border-radius:999px;background:#3a1212;border:1px solid #7a1e1e;color:#ffbaba;font-weight:600}
     </style>
 </head>
 <body>
 <header>
     <h1>Panel de Sensores — Stark Industries</h1>
-    <div class="muted">API: <code>/api/sensors/readings</code> · <code>/api/devices</code></div>
+    <div class="muted">API:
+        <code>/api/sensors/readings</code> ·
+        <code>/api/devices</code> ·
+        <code>/api/alerts/recent</code>
+    </div>
 </header>
 
-<main>
 <main>
     <!-- Sección 1: Dispositivos (más grande) -->
     <section class="card">
@@ -55,7 +63,6 @@
             <div class="actions" style="margin-top:10px">
                 <button id="createDeviceBtn" class="primary">Crear dispositivo</button>
                 <button id="reloadDevicesBtn" class="ghost" type="button">Actualizar lista</button>
-                <!-- 🆕 -->
                 <button id="deleteAllDevicesBtn" class="ghost" type="button" style="margin-left:6px">Borrar todos</button>
             </div>
             <p class="muted" style="margin-top:8px">
@@ -142,6 +149,40 @@
             <p class="muted" style="margin-top:8px">
                 GET → <code>/api/sensors/readings?size=100</code>
             </p>
+        </div>
+    </section>
+
+    <!-- Sección 3: Alertas de Seguridad (Peligrosas) -->
+    <section class="card">
+        <h2>Alertas de Seguridad <span class="badge-danger">Peligrosas</span></h2>
+        <div class="content">
+            <div class="toolbar">
+                <button id="refreshDangerBtn" class="ghost">Actualizar</button>
+                <label style="display:flex;align-items:center;gap:8px">
+                    <input type="checkbox" id="autoDanger" />
+                    <span class="muted">Auto cada 10 s</span>
+                </label>
+                <span class="muted">Fuente: <code>/api/alerts/recent?size=50</code></span>
+            </div>
+            <div class="table-wrap danger" style="margin-top:6px">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Sensor</th>
+                        <th>Tipo</th>
+                        <th>Valor</th>
+                        <th>Unidad</th>
+                        <th>Decidido por</th>
+                        <th>Fecha</th>
+                        <th>Notas</th>
+                    </tr>
+                    </thead>
+                    <tbody id="dangerRows">
+                    <tr><td colspan="8" class="muted">Sin alertas peligrosas registradas…</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </section>
 </main>

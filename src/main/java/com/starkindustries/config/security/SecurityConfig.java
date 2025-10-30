@@ -111,7 +111,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .ignoringRequestMatchers(
-                                "/auth/register","/api/devices/**", "/auth/all", "/auth/login", "/auth/{id}"
+                                "/auth/register","/api/devices/**","/api/alerts/**", "/auth/all", "/auth/login", "/auth/{id}"
                         )
                 ).addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class);
 

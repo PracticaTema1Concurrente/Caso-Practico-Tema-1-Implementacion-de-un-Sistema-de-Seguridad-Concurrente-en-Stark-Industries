@@ -5,15 +5,19 @@ const API = {
   start: (id) => `/api/devices/${id}/start`,
   stop: (id) => `/api/devices/${id}/stop`,
   del:  (id) => `/api/devices/${id}`, // eliminar uno
+  alertsRecent: (size=50) => `/api/alerts/recent?size=${encodeURIComponent(size)}`
 };
 
 // --- Helpers DOM/estado ---
 const el = (id) => document.getElementById(id);
 const rows = el('rows');
 const devicesRows = el('devicesRows');
+const dangerRows = el('dangerRows');
 const toast = el('toast');
 
 let autoTimer = null;
+let autoDangerTimer = null;
+
 let allReadings = [];
 let filtered = [];
 let page = 1;
@@ -39,7 +43,7 @@ function authHeader() {
 }
 
 function getCookie(name){
-  const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)`);
   return m ? m.pop() : '';
 }
 
@@ -352,43 +356,97 @@ function renderPage() {
   el('pageInfo').textContent = `Página ${page}/${totalPages}`;
 }
 
+// --- Alertas peligrosas ---
+async function loadDangerAlerts() {
+  try {
+    const res = await fetch(API.alertsRecent(50), { headers: { Accept: 'application/json' } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+
+    const data = await res.json();
+    renderDangerAlerts(Array.isArray(data) ? data : []);
+  } catch (e) {
+    console.warn(e);
+    dangerRows.innerHTML = '<tr><td colspan="8" class="muted">Error cargando alertas.</td></tr>';
+  }
+}
+
+function renderDangerAlerts(list) {
+  if (!list || list.length === 0) {
+    dangerRows.innerHTML = '<tr><td colspan="8" class="muted">Sin alertas peligrosas registradas…</td></tr>';
+    return;
+  }
+  const rowsHtml = list.map(a => {
+    const id = a.id ?? '';
+    const sensorId = a.sensorId ?? '';
+    const type = (a.type ?? '').toUpperCase();
+    const value = (typeof a.value === 'number' && a.value.toFixed) ? a.value.toFixed(2) : (a.value ?? '');
+    const unit = a.unit ?? '';
+    const by = a.decidedBy ?? '';
+    const date = fmtTs(a.createdAt);
+    const notes = (a.notes ?? '').slice(0, 160); // corta por si es largo
+    return `
+      <tr>
+        <td>${id}</td>
+        <td>${sensorId}</td>
+        <td>${type}</td>
+        <td>${value}</td>
+        <td>${unit}</td>
+        <td>${by}</td>
+        <td>${date}</td>
+        <td title="${a.notes ?? ''}">${notes}</td>
+      </tr>`;
+  }).join('');
+  dangerRows.innerHTML = rowsHtml;
+}
+
 // --- Paginación ---
-el('prevPage').addEventListener('click', () => { if (page > 1) { page--; renderPage(); } });
-el('nextPage').addEventListener('click', () => {
+el('prevPage')?.addEventListener('click', () => { if (page > 1) { page--; renderPage(); } });
+el('nextPage')?.addEventListener('click', () => {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   if (page < totalPages) { page++; renderPage(); }
 });
-el('pageSize').addEventListener('change', (e) => {
+el('pageSize')?.addEventListener('change', (e) => {
   pageSize = parseInt(e.target.value, 10) || 10;
   page = 1;
   renderPage();
 });
 
 // --- Filtros / acciones ---
-el('filterBtn').addEventListener('click', applyFilters);
-el('resetBtn').addEventListener('click', () => { el('fSensor').value = ''; el('fType').value = ''; applyFilters(); });
-el('refreshBtn').addEventListener('click', () => { loadReadings(); });
+el('filterBtn')?.addEventListener('click', applyFilters);
+el('resetBtn')?.addEventListener('click', () => { el('fSensor').value = ''; el('fType').value = ''; applyFilters(); });
+el('refreshBtn')?.addEventListener('click', () => { loadReadings(); });
 
-el('auto').addEventListener('change', (e) => {
+// Auto-refresh lecturas
+el('auto')?.addEventListener('change', (e) => {
   if (e.target.checked) autoTimer = setInterval(loadReadings, 5000);
   else clearInterval(autoTimer);
 });
 
+// Auto-refresh alertas peligrosas
+el('refreshDangerBtn')?.addEventListener('click', loadDangerAlerts);
+el('autoDanger')?.addEventListener('change', (e) => {
+  if (e.target.checked) {
+    autoDangerTimer = setInterval(loadDangerAlerts, 10000);
+  } else {
+    clearInterval(autoDangerTimer);
+  }
+});
+
 // Autocompletar sensorId al cambiar el tipo
-el('d_type').addEventListener('change', () => {
+el('d_type')?.addEventListener('change', () => {
   const type = el('d_type').value;
   el('d_sensorId').value = nextSensorIdForType(type);
 });
 
 // Dispositivos actions
-el('createDeviceBtn').addEventListener('click', createDevice);
-el('reloadDevicesBtn').addEventListener('click', loadDevices);
-el('deleteAllDevicesBtn').addEventListener('click', deleteAllDevices);
+el('createDeviceBtn')?.addEventListener('click', createDevice);
+el('reloadDevicesBtn')?.addEventListener('click', loadDevices);
+el('deleteAllDevicesBtn')?.addEventListener('click', deleteAllDevices);
 
 // --- Inicialización ---
 (async function init() {
-  el('d_period').value = '2500';
-  el('d_sensorId').value = nextSensorIdForType(el('d_type').value);
+  if (el('d_period')) el('d_period').value = '2500';
+  if (el('d_sensorId') && el('d_type')) el('d_sensorId').value = nextSensorIdForType(el('d_type').value);
 
   // 1) Saber quién soy y roles
   const me = await fetchMe();
@@ -401,4 +459,5 @@ el('deleteAllDevicesBtn').addEventListener('click', deleteAllDevices);
   // 3) Cargar datos
   await loadDevices();
   await loadReadings();
+  await loadDangerAlerts();
 })();
