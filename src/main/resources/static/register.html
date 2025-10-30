@@ -20,59 +20,27 @@
         <div id="msg" class="msg" role="status" aria-live="polite"></div>
 
         <form id="registerForm" action="/auth/register" method="post" novalidate>
-            <!-- CSRF (si tu backend lo usa) -->
             <input type="hidden" name="_csrf" id="csrfField">
 
             <div class="field">
                 <label for="fullname">Nombre y apellidos</label>
-                <input
-                        id="fullname"
-                        name="fullName"
-                        type="text"
-                        placeholder="Tony Stark"
-                        autocomplete="name"
-                        required
-                />
+                <input id="fullname" name="fullName" type="text" placeholder="Tony Stark" autocomplete="name" required />
             </div>
 
             <div class="field">
                 <label for="username">Usuario</label>
-                <input
-                        id="username"
-                        name="username"
-                        type="text"
-                        placeholder="t.stark"
-                        inputmode="text"
-                        autocomplete="username"
-                        required
-                        minlength="3"
-                />
+                <input id="username" name="username" type="text" placeholder="t.stark" inputmode="text" autocomplete="username" required minlength="3" />
             </div>
 
             <div class="field">
                 <label for="email">Correo</label>
-                <input
-                        id="email"
-                        name="email"
-                        type="email"
-                        placeholder="t.stark@starkindustries.com"
-                        autocomplete="email"
-                        required
-                />
+                <input id="email" name="email" type="email" placeholder="t.stark@starkindustries.com" autocomplete="email" required />
             </div>
 
             <div class="field">
                 <label for="password">Contraseña</label>
                 <div class="password-wrap">
-                    <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            placeholder="••••••••"
-                            autocomplete="new-password"
-                            required
-                            minlength="8"
-                    />
+                    <input id="password" name="password" type="password" placeholder="••••••••" autocomplete="new-password" required minlength="8" />
                     <button type="button" class="toggle" aria-label="Mostrar u ocultar contraseña">👁️</button>
                 </div>
                 <small class="muted" id="pwd-hint">Mín. 8 caracteres. Recomendado: mayúsculas, minúsculas, número y símbolo.</small>
@@ -84,15 +52,7 @@
             <div class="field">
                 <label for="password2">Repite la contraseña</label>
                 <div class="password-wrap">
-                    <input
-                            id="password2"
-                            name="password2"
-                            type="password"
-                            placeholder="••••••••"
-                            autocomplete="new-password"
-                            required
-                            minlength="8"
-                    />
+                    <input id="password2" name="password2" type="password" placeholder="••••••••" autocomplete="new-password" required minlength="8" />
                     <button type="button" class="toggle toggle-2" aria-label="Mostrar u ocultar confirmación">👁️</button>
                 </div>
                 <small id="matchMsg" class="muted"></small>
@@ -105,7 +65,8 @@
                 </label>
             </div>
 
-            <button id="submitBtn" type="submit" class="btn btn--primary" disabled>Crear cuenta</button>
+            <!-- 👇 Aquí está el cambio -->
+            <button id="submitBtn" type="submit" class="btn btn--primary" onclick="validateRegisterForm(event)">Crear cuenta</button>
 
             <p class="muted" style="margin-top:10px">
                 ¿Ya tienes cuenta? <a class="link" href="login.html">Inicia sesión</a>
@@ -117,15 +78,7 @@
         </footer>
     </section>
 </main>
+
 <script src="js/register.js"></script>
-<script>
-    (function setCsrfFromCookie(){
-      function getCookie(name){
-        return document.cookie.split('; ').find(row => row.startsWith(name + '='))?.split('=')[1];
-      }
-      var token = getCookie('XSRF-TOKEN');
-      if (token) document.getElementById('csrfField').value = decodeURIComponent(token);
-    })();
-</script>
 </body>
 </html>

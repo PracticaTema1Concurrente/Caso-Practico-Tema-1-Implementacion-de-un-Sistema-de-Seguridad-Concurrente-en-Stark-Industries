@@ -4,6 +4,8 @@ import com.starkindustries.domain.User;
 import com.starkindustries.domain.repository.UserRepo;
 import com.starkindustries.service.UserService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -18,6 +20,8 @@ import java.util.Map;
 @RequestMapping("/auth")
 public class AuthController {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
+
     private final UserService userService;
     private final UserRepo userRepo;
 
@@ -26,7 +30,7 @@ public class AuthController {
         this.userRepo = userRepo;
     }
 
-    // ====== API JSON ======
+    // ====== API JSON (sin cambios) ======
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -43,18 +47,33 @@ public class AuthController {
                 ));
     }
 
-    // ====== FORM register.html ======
+    // ====== FORM register.html → recoger parámetros explícitos ======
     @PostMapping(value = "/register", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-    public String registerForm(@Valid @ModelAttribute User formUser, RedirectAttributes ra) {
+    public String registerForm(
+            @RequestParam("fullName") String fullName,
+            @RequestParam("username") String username,
+            @RequestParam("email")    String email,
+            @RequestParam("password") String password,
+            RedirectAttributes ra
+    ) {
+        // Traza clara en servidor
+        System.out.println("SUBMIT"); // consola del servidor
+        log.info("SUBMIT /auth/register fullName='{}' username='{}' email='{}'", fullName, username, email);
+
         try {
-            userService.register(formUser);
+            User u = new User();
+            u.setFullName(fullName);
+            u.setUsername(username);
+            u.setEmail(email);
+            u.setPassword(password); // el servicio ya la encripta con BCrypt
+
+            userService.register(u);
             return "redirect:/login.html?registered=1";
         } catch (IllegalArgumentException ex) {
             ra.addFlashAttribute("registerError", ex.getMessage());
             return "redirect:/register.html?error=1";
         }
     }
-
 
     // ====== Lectura usuarios (para pruebas/admin) ======
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
